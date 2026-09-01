@@ -413,7 +413,7 @@
       window.closeSidebar();
     }
 
-    const viewIds = ["viewDashboard", "viewLiveGmail", "viewThreatIntel", "viewIntegrations", "viewSettings"];
+    const viewIds = ["viewDashboard", "viewLiveGmail", "viewThreatIntel", "viewExport", "viewIntegrations", "viewSettings"];
     viewIds.forEach(id => {
       const el = $(id);
       if (el) el.classList.add("hidden");
@@ -423,6 +423,7 @@
       dashboard: $("viewDashboard"),
       liveGmail: $("viewLiveGmail"),
       threatIntel: $("viewThreatIntel"),
+      export: $("viewExport"),
       integrations: $("viewIntegrations"),
       settings: $("viewSettings"),
     };
@@ -434,9 +435,10 @@
     if ($("breadcrumbSection")) {
       $("breadcrumbSection").textContent = {
         dashboard: "Dashboard",
-        liveGmail: "Live Gmail Scanner",
-        threatIntel: "Threat Intel",
-        integrations: "Integrations",
+        liveGmail: "Live Inbox Checking",
+        threatIntel: "Threat Intel & Trends",
+        export: "Export Details & Reports",
+        integrations: "Integrations & API",
         settings: "SOC Settings",
       }[viewName] || "Dashboard";
     }
@@ -444,10 +446,11 @@
     if ($("topGreeting")) {
       $("topGreeting").textContent = {
         dashboard: "Email Forensics & Live Threat Intelligence",
-        liveGmail: "Gmail Live Inbox Forensics & Threat Checking",
-        threatIntel: "Cryptographic Anomaly & Attack Vectors",
-        integrations: "Connected Mail Gateways & Log Webhooks",
-        settings: "SOC Engine Configuration & Policy Rules",
+        liveGmail: "Live Mailbox Forensics & SPF/DKIM/DMARC Verification",
+        threatIntel: "Cryptographic Anomaly & Attack Vector Statistics",
+        export: "Download SIEM CSV, JSON Forensics & Executive Threat Briefings",
+        integrations: "Connected Mail Gateways & Ingestion Pipelines",
+        settings: "SOC Engine Configuration & Detection Policies",
       }[viewName] || "SOC Workspace";
     }
 
@@ -456,6 +459,7 @@
       { id: "navTabDashboard", name: "dashboard" },
       { id: "navTabLiveInbox", name: "liveGmail" },
       { id: "navTabAnalytics", name: "threatIntel" },
+      { id: "navTabExport", name: "export" },
       { id: "navTabIntegrations", name: "integrations" },
       { id: "navTabSettings", name: "settings" },
     ];
@@ -464,9 +468,9 @@
       const el = $(tab.id);
       if (!el) return;
       if (tab.name === viewName) {
-        el.className = "w-full flex items-center gap-3 px-3 py-2 rounded-md text-xs font-semibold bg-slate-100 dark:bg-[#222730] text-slate-900 dark:text-white border border-slate-200 dark:border-[#2D3440] transition";
+        el.className = "w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-semibold bg-slate-200/70 dark:bg-[#222730] text-slate-900 dark:text-white border border-slate-300 dark:border-[#2D3440] transition";
       } else {
-        el.className = "w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium text-slate-600 dark:text-[#8A94A6] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#222730]/60 transition";
+        el.className = "w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium text-slate-600 dark:text-[#8A94A6] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#222730] border border-transparent hover:border-slate-200 dark:hover:border-[#2D3440] transition";
       }
     });
 
@@ -475,6 +479,8 @@
       fetchLiveGmailMessages();
     } else if (viewName === "dashboard") {
       fetchAllEmails();
+    } else if (viewName === "export") {
+      renderExportView();
     }
   };
 
@@ -495,6 +501,9 @@
 
       updateStatsUI();
       renderRecentAudits();
+      if (state.activeView === "export") {
+        renderExportView();
+      }
     } catch (err) {
       console.error("Fetch emails error:", err);
     }
@@ -568,48 +577,64 @@
     if (!list) return;
 
     if (!state.emails.length) {
-      list.innerHTML = `<div class="p-4 text-center text-xs text-[#8A94A6]">No email audits match the criteria. Click "+ New Scan" or "Simulate Threat".</div>`;
+      list.innerHTML = `<div class="p-6 text-center text-xs text-[#8A94A6] bg-slate-50 dark:bg-[#1A1E24] rounded-lg border border-slate-200 dark:border-[#2D3440]">No email audits match the criteria. Click "+ Upload EML" or trigger a scan.</div>`;
       return;
     }
 
     list.innerHTML = state.emails.map(email => {
-      const isHigh = email.threat_score >= 60;
-      const isMedium = email.threat_score >= 30 && email.threat_score < 60;
+      const isHigh = (email.threat_score ?? 0) >= 60;
+      const isMedium = (email.threat_score ?? 0) >= 21 && (email.threat_score ?? 0) < 60;
       const badgeClass = isHigh
         ? "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/30"
         : isMedium
         ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/30"
         : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30";
       
-      const badgeText = isHigh ? "Phishing Attack" : isMedium ? "Suspicious" : "Authentic Pass";
+      const badgeText = isHigh ? "🚨 Phishing Attack" : isMedium ? "⚠️ Suspicious Relay" : "🛡️ Authentic Pass";
+      const spfPass = (email.spf_status || "FAIL").toUpperCase() === "PASS";
+      const dkimPass = (email.dkim_status || "FAIL").toUpperCase() === "PASS";
+      const dmarcPass = (email.dmarc_status || "FAIL").toUpperCase() === "PASS";
+
       const aiNote = email.ai_note;
       const readNoteText = aiNote?.read_note || (isHigh ? "High-risk spoof attempt detected." : "Standard authentic business communication.");
 
       return `
-        <div onclick="selectEmail(${email.id})" class="p-2.5 rounded-md bg-slate-50 dark:bg-[#1A1E24] hover:bg-slate-100 dark:hover:bg-[#282F3B] border border-slate-200 dark:border-[#2D3440] cursor-pointer transition flex flex-col gap-1.5 group">
+        <div onclick="selectEmail('${email.id}')" class="p-3 rounded-lg bg-slate-50 dark:bg-[#1A1E24] hover:bg-slate-100 dark:hover:bg-[#282F3B] border border-slate-200 dark:border-[#2D3440] cursor-pointer transition flex flex-col gap-2 group">
           <div class="flex items-center justify-between gap-2.5">
-            <div class="space-y-0.5 min-w-0">
-              <div class="text-xs font-semibold text-slate-900 dark:text-white group-hover:text-slate-200 truncate transition">
-                ${esc(email.subject || "No Subject")}
+            <div class="space-y-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeClass} border whitespace-nowrap">
+                  ${badgeText}
+                </span>
+                <span class="text-xs font-bold text-slate-900 dark:text-white group-hover:text-slate-300 truncate transition">
+                  ${esc(email.subject || "No Subject")}
+                </span>
               </div>
-              <div class="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-[#8A94A6] truncate">
-                <span class="truncate">${esc(email.from_address || "unknown")}</span>
+              <div class="flex items-center gap-2 text-[11px] text-slate-500 dark:text-[#8A94A6] truncate">
+                <span class="truncate font-medium text-slate-700 dark:text-slate-300">From: ${esc(email.from_address || email.from || "unknown")}</span>
                 <span>•</span>
-                <span class="font-mono text-[10px] shrink-0">${formatTs(email.created_at)}</span>
+                <span class="font-mono text-[10px] shrink-0">${formatTs(email.created_at || email.date_ts)}</span>
               </div>
             </div>
             <div class="text-right shrink-0 space-y-0.5">
-              <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold border ${badgeClass} whitespace-nowrap">
-                ${badgeText}
-              </span>
-              <div class="text-[10px] font-mono font-bold ${isHigh ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-[#8A94A6]'}">
-                Score: ${email.threat_score}/100
+              <div class="text-[10px] uppercase font-bold text-[#8A94A6]">Threat Score</div>
+              <div class="text-xs font-mono font-bold ${isHigh ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}">
+                ${email.threat_score ?? 0}/100
               </div>
             </div>
           </div>
-          <div class="flex items-start gap-1.5 p-1.5 rounded bg-slate-100 dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] text-[11px] text-slate-700 dark:text-slate-300">
-            <span class="text-slate-400 dark:text-[#8A94A6] font-bold shrink-0">✨ AI Note:</span>
-            <span class="line-clamp-1">${esc(readNoteText)}</span>
+
+          <!-- Protocol Matrix & AI Note -->
+          <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/60 dark:border-[#2D3440]/60 flex-wrap">
+            <div class="flex items-center gap-1.5 text-[10px] font-mono">
+              <span class="px-1.5 py-0.2 rounded ${spfPass ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30'}">SPF:${email.spf_status || 'FAIL'}</span>
+              <span class="px-1.5 py-0.2 rounded ${dkimPass ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30'}">DKIM:${email.dkim_status || 'FAIL'}</span>
+              <span class="px-1.5 py-0.2 rounded ${dmarcPass ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30'}">DMARC:${email.dmarc_status || 'FAIL'}</span>
+            </div>
+            <div class="text-[11px] text-slate-500 dark:text-[#8A94A6] flex items-center gap-1 min-w-0 max-w-sm truncate">
+              <span class="text-slate-400 dark:text-slate-300 font-bold shrink-0">✨ AI:</span>
+              <span class="truncate">${esc(readNoteText)}</span>
+            </div>
           </div>
         </div>
       `;
@@ -623,15 +648,37 @@
 
   // ==================== FORENSIC INSPECTION DRAWER ====================
   window.selectEmail = async function(id) {
-    try {
-      const data = await api(`/api/emails/${id}`);
-      state.currentEmailData = data;
-      renderInspector(data);
+    if (id == null || id === "") return;
+    
+    // First immediate fallback from in-memory cache to render instantly
+    let emailObj = (state.emails || []).find(e => String(e.id) === String(id) || e.uid === String(id) || e.message_id === String(id)) ||
+                   (state.gmailMessages || []).find(m => String(m.id) === String(id) || m.gmailId === String(id));
+
+    if (emailObj) {
+      state.currentEmailData = emailObj;
+      renderInspector(emailObj);
       openInspector();
+    }
+
+    // Fetch fresh detailed forensic record from API
+    try {
+      const data = await api(`/api/emails/${encodeURIComponent(id)}`);
+      if (data && !data.error) {
+        state.currentEmailData = data;
+        renderInspector(data);
+        openInspector();
+      }
     } catch (err) {
-      alert(`Could not load email forensic audit: ${err.message}`);
+      console.warn("Could not fetch remote email forensic record:", err);
+      if (!emailObj) {
+        alert(`Could not load email forensic audit: ${err.message}`);
+      }
     }
   };
+
+  // Aliases for convenience
+  window.inspectEmail = window.selectEmail;
+  window.showAiReport = window.selectEmail;
 
   function renderAiNotePod(aiNote) {
     const card = $("drawerAiNoteCard");
@@ -648,6 +695,13 @@
 
     if (!aiNote) {
       if (readNote) readNote.textContent = "AI analysis not generated yet. Click 🔄 to analyze with Gemini.";
+      if (safetyBadge) {
+        safetyBadge.textContent = "🛡️ Evaluation Ready";
+        safetyBadge.className = "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-500/10 text-slate-400 border border-slate-500/30 whitespace-nowrap";
+      }
+      if (keyElementsWrapper) keyElementsWrapper.classList.add("hidden");
+      if (threatWrapper) threatWrapper.classList.add("hidden");
+      if (suggestionsWrapper) suggestionsWrapper.classList.add("hidden");
       return;
     }
 
@@ -658,7 +712,7 @@
       if (isSafe) {
         safetyBadge.textContent = `🛡️ ${statusText}`;
         safetyBadge.className = "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap";
-      } else if (aiNote.safety_status?.toLowerCase().includes("suspicious")) {
+      } else if (String(aiNote.safety_status || "").toLowerCase().includes("suspicious")) {
         safetyBadge.textContent = `⚠️ ${statusText}`;
         safetyBadge.className = "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30 whitespace-nowrap";
       } else {
@@ -667,27 +721,12 @@
       }
     }
 
-    // Simple Read note synopsis
+    // 1. What is that? (Simple Read note synopsis)
     if (readNote) {
-      readNote.textContent = aiNote.read_note || "No summary available.";
+      readNote.textContent = aiNote.read_note || "Standard verified email communication.";
     }
 
-    // Key Elements chips
-    if (keyElementsList && keyElementsWrapper) {
-      const elements = aiNote.key_elements || [];
-      if (elements.length > 0) {
-        keyElementsWrapper.classList.remove("hidden");
-        keyElementsList.innerHTML = elements.map(el => `
-          <span class="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-[#182338] text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-500/30 font-medium">
-            ${esc(el)}
-          </span>
-        `).join("");
-      } else {
-        keyElementsWrapper.classList.add("hidden");
-      }
-    }
-
-    // Threat & safety reasoning
+    // 2. How dangerous is that or not? (Threat reasoning)
     if (threatReasoning && threatWrapper) {
       if (aiNote.threat_reasoning) {
         threatWrapper.classList.remove("hidden");
@@ -697,13 +736,34 @@
       }
     }
 
-    // Suggestions
+    // 3. What are the things detected? (Key Elements chips)
+    if (keyElementsList && keyElementsWrapper) {
+      const rawElements = aiNote.key_elements;
+      const elements = Array.isArray(rawElements)
+        ? rawElements
+        : (typeof rawElements === "string" && rawElements.trim() ? [rawElements] : []);
+      if (elements.length > 0) {
+        keyElementsWrapper.classList.remove("hidden");
+        keyElementsList.innerHTML = elements.map(el => `
+          <span class="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-[#182338] text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-500/30 font-medium text-xs">
+            ${esc(String(el))}
+          </span>
+        `).join("");
+      } else {
+        keyElementsWrapper.classList.add("hidden");
+      }
+    }
+
+    // 4. What to do? (Action suggestions)
     if (suggestionsList && suggestionsWrapper) {
-      const suggestions = aiNote.suggestions || [];
+      const rawSug = aiNote.suggestions;
+      const suggestions = Array.isArray(rawSug)
+        ? rawSug
+        : (typeof rawSug === "string" && rawSug.trim() ? [rawSug] : []);
       if (suggestions.length > 0) {
         suggestionsWrapper.classList.remove("hidden");
         suggestionsList.innerHTML = suggestions.map(s => `
-          <li class="leading-relaxed">${esc(s)}</li>
+          <li class="leading-relaxed text-xs text-slate-700 dark:text-slate-200">${esc(String(s))}</li>
         `).join("");
       } else {
         suggestionsWrapper.classList.add("hidden");
@@ -712,21 +772,25 @@
   }
 
   function renderInspector(data) {
-    const isHigh = (data.threat_score || 0) >= 60;
-    const isMedium = (data.threat_score || 0) >= 30 && (data.threat_score || 0) < 60;
+    if (!data) return;
+    const score = data.threat_score ?? data.risk_score ?? 0;
+    const isHigh = score >= 60;
+    const isMedium = score >= 21 && score < 60;
 
     if ($("drawerSubject")) $("drawerSubject").textContent = data.subject || "No Subject";
-    if ($("drawerDate")) $("drawerDate").textContent = formatTs(data.created_at);
+    if ($("drawerDate")) $("drawerDate").textContent = formatTs(data.created_at || data.date_ts || data.date);
     if ($("drawerScoreVal")) {
-      $("drawerScoreVal").textContent = data.threat_score ?? 0;
-      $("drawerScoreVal").className = `text-3xl font-black ${isHigh ? 'text-rose-600 dark:text-rose-400' : isMedium ? 'text-amber-500' : 'text-emerald-600 dark:text-emerald-400'}`;
+      $("drawerScoreVal").textContent = score;
+      $("drawerScoreVal").className = `text-2xl sm:text-3xl font-black ${isHigh ? 'text-rose-600 dark:text-rose-400' : isMedium ? 'text-amber-500' : 'text-emerald-600 dark:text-emerald-400'}`;
     }
 
     if ($("drawerRiskBadge")) {
-      $("drawerRiskBadge").textContent = data.verdict || (isHigh ? "🚨 HIGH RISK / PHISHING ATTACK" : "🛡️ AUTHENTIC / VERIFIED PASS");
+      $("drawerRiskBadge").textContent = data.verdict || (isHigh ? "🚨 HIGH RISK / PHISHING ATTACK" : isMedium ? "⚠️ SUSPICIOUS RELAY" : "🛡️ AUTHENTIC / VERIFIED PASS");
       $("drawerRiskBadge").className = `px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border whitespace-nowrap ${
         isHigh
           ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/30'
+          : isMedium
+          ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/30'
           : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30'
       }`;
     }
@@ -734,38 +798,45 @@
     // Render Gemini AI Note
     renderAiNotePod(data.ai_note);
 
-    if ($("drawerOriginIP")) $("drawerOriginIP").textContent = data.origin_ip || "127.0.0.1";
-    if ($("drawerFrom")) $("drawerFrom").textContent = data.from_address || "None";
-    if ($("drawerReturnPath")) $("drawerReturnPath").textContent = data.return_path || data.from_address || "None";
+    if ($("drawerOriginIP")) $("drawerOriginIP").textContent = data.origin_ip || data.ip_address || "127.0.0.1";
+    if ($("drawerFrom")) $("drawerFrom").textContent = data.from_address || data.from || data.from_addr || "None";
+    if ($("drawerReturnPath")) $("drawerReturnPath").textContent = data.return_path || data.envelope_from || data.from_address || "None";
     if ($("drawerReplyTo")) $("drawerReplyTo").textContent = data.reply_to || "Same as From";
 
     // Heuristics Findings
     const findingsList = $("drawerFindingsList");
     if (findingsList) {
-      const findings = data.findings || [];
+      let rawFindings = data.findings;
+      if (!rawFindings && data.data && data.data.findings) {
+        rawFindings = data.data.findings;
+      }
+      const findings = Array.isArray(rawFindings)
+        ? rawFindings
+        : (typeof rawFindings === "string" && rawFindings.trim() ? [rawFindings] : []);
+
       if (!findings.length) {
-        findingsList.innerHTML = `<li class="text-emerald-600 dark:text-emerald-400">✓ No anomalous header signals or impersonation tactics detected.</li>`;
+        findingsList.innerHTML = `<li class="text-emerald-600 dark:text-emerald-400 font-medium">✓ No anomalous header signals or impersonation tactics detected.</li>`;
       } else {
         findingsList.innerHTML = findings.map(f => `
           <li class="flex items-start gap-2 text-slate-700 dark:text-slate-300">
             <span class="text-rose-500 font-bold shrink-0">⚠️</span>
-            <span>${esc(f)}</span>
+            <span>${esc(String(f))}</span>
           </li>
         `).join("");
       }
     }
 
     // Protocol Matrix (SPF / DKIM / DMARC)
-    const spf = (data.spf_status || "FAIL").toUpperCase();
-    const dkim = (data.dkim_status || "FAIL").toUpperCase();
-    const dmarc = (data.dmarc_status || "FAIL").toUpperCase();
+    const spf = (data.spf_status || (data.data?.spf?.status) || "FAIL").toUpperCase();
+    const dkim = (data.dkim_status || (data.data?.dkim?.status) || "FAIL").toUpperCase();
+    const dmarc = (data.dmarc_status || (data.data?.dmarc?.status) || "FAIL").toUpperCase();
 
-    renderProtocolPod("drawerSpfBadge", "drawerSpfExpl", "SPF", spf, data.spf_explanation);
-    renderProtocolPod("drawerDkimBadge", "drawerDkimExpl", "DKIM", dkim, data.dkim_explanation);
-    renderProtocolPod("drawerDmarcBadge", "drawerDmarcExpl", "DMARC", dmarc, data.dmarc_explanation);
+    renderProtocolPod("drawerSpfBadge", "drawerSpfExpl", "SPF", spf, data.spf_explanation || data.data?.spf?.explanation);
+    renderProtocolPod("drawerDkimBadge", "drawerDkimExpl", "DKIM", dkim, data.dkim_explanation || data.data?.dkim?.detail);
+    renderProtocolPod("drawerDmarcBadge", "drawerDmarcExpl", "DMARC", dmarc, data.dmarc_explanation || data.data?.dmarc?.detail);
 
     // Raw Source
-    if ($("drawerRawSource")) $("drawerRawSource").textContent = data.raw_rfc822 || "From: " + data.from_address;
+    if ($("drawerRawSource")) $("drawerRawSource").textContent = data.raw_rfc822 || data.raw || ("From: " + (data.from_address || data.from || "unknown"));
   }
 
   function renderProtocolPod(badgeId, explId, type, status, explanation) {
@@ -786,17 +857,17 @@
     }
   }
 
-  function openInspector() {
+  window.openInspector = function() {
     const modal = $("inspectorModal");
     const drawer = $("inspectorDrawer");
     if (!modal || !drawer) return;
 
     modal.classList.remove("hidden");
-    setTimeout(() => {
-      modal.classList.remove("opacity-0");
-      drawer.classList.remove("translate-x-full");
-    }, 10);
-  }
+    modal.classList.remove("opacity-0");
+    modal.classList.add("opacity-100");
+    drawer.classList.remove("translate-x-full");
+    drawer.classList.add("translate-x-0");
+  };
 
   window.closeInspector = function() {
     const modal = $("inspectorModal");
@@ -804,10 +875,32 @@
     if (!modal || !drawer) return;
 
     drawer.classList.add("translate-x-full");
+    drawer.classList.remove("translate-x-0");
     modal.classList.add("opacity-0");
+    modal.classList.remove("opacity-100");
     setTimeout(() => {
       modal.classList.add("hidden");
     }, 200);
+  };
+
+  window.refreshCurrentEmailAiNote = async function() {
+    if (!state.currentEmailData || !state.currentEmailData.id) return;
+    const btn = $("drawerAiRefreshBtn");
+    if (btn) btn.classList.add("animate-spin");
+
+    try {
+      const res = await api(`/api/emails/${state.currentEmailData.id}/ai-analyze`, { method: "POST" });
+      if (res && res.ai_note) {
+        state.currentEmailData.ai_note = res.ai_note;
+        renderAiNotePod(res.ai_note);
+        logActivity(`Re-analyzed Audit #${state.currentEmailData.id} with Gemini AI.`, "success");
+      }
+    } catch (err) {
+      console.warn("AI refresh error:", err);
+      alert(`AI re-analysis notice: ${err.message}`);
+    } finally {
+      if (btn) btn.classList.remove("animate-spin");
+    }
   };
 
   window.deleteCurrentAudit = async function() {
@@ -847,9 +940,315 @@
     }
   };
 
-  // ==================== CSV EXPORT ====================
+  // ==================== EXPORT DETAILS & REPORTING ENGINE ====================
+  function triggerClientBlobDownload(content, filename, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 150);
+  }
+
   window.exportAuditCSV = function() {
-    window.location.href = "/api/export/csv";
+    window.downloadCsvExport();
+  };
+
+  window.downloadCsvExport = async function() {
+    const filter = $("exportCsvRiskFilter") ? $("exportCsvRiskFilter").value : "all";
+    try {
+      // Direct window location / anchor download
+      const downloadUrl = `/api/export/csv?risk=${encodeURIComponent(filter)}`;
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `mailmeta-audits-${filter}-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => document.body.removeChild(a), 150);
+      logActivity(`Exported CSV spreadsheet [filter: ${filter}]`, "success");
+    } catch (err) {
+      // Client-side fallback generator if iframe restricts top-level navigation
+      const emails = (state.emails || []).filter(e => {
+        if (filter === "high") return (e.threat_score ?? 0) >= 60;
+        if (filter === "medium") return (e.threat_score ?? 0) >= 21 && (e.threat_score ?? 0) < 60;
+        if (filter === "safe") return (e.threat_score ?? 0) <= 20;
+        return true;
+      });
+
+      const csvRows = [
+        ["ID", "Date", "Subject", "From", "Origin IP", "Threat Score", "SPF", "DKIM", "DMARC", "AI Note"].map(c => `"${String(c).replace(/"/g, '""')}"`).join(","),
+        ...emails.map(e => [
+          e.id,
+          new Date((e.created_at || e.date_ts || Date.now() / 1000) * 1000).toISOString(),
+          e.subject || "No Subject",
+          e.from_address || "unknown",
+          e.origin_ip || "127.0.0.1",
+          e.threat_score ?? 0,
+          e.spf_status || "FAIL",
+          e.dkim_status || "FAIL",
+          e.dmarc_status || "FAIL",
+          e.ai_note?.read_note || ""
+        ].map(c => `"${String(c).replace(/"/g, '""')}"`).join(","))
+      ].join("\r\n");
+
+      triggerClientBlobDownload(csvRows, `mailmeta-audits-${filter}.csv`, "text/csv;charset=utf-8");
+      logActivity(`Exported CSV spreadsheet [filter: ${filter}] (Client Stream)`, "success");
+    }
+  };
+
+  window.downloadJsonExport = async function() {
+    const format = $("exportJsonFormat") ? $("exportJsonFormat").value : "pretty";
+    const filter = $("exportCsvRiskFilter") ? $("exportCsvRiskFilter").value : "all";
+    try {
+      const res = await api(`/api/export/json?risk=${encodeURIComponent(filter)}`);
+      const text = format === "pretty" ? JSON.stringify(res, null, 2) : JSON.stringify(res);
+      triggerClientBlobDownload(text, `mailmeta-forensics-${new Date().toISOString().slice(0, 10)}.json`, "application/json");
+      logActivity("Exported full forensic JSON intelligence archive.", "success");
+    } catch (err) {
+      alert(`Export JSON failed: ${err.message}`);
+    }
+  };
+
+  window.downloadSingleAuditEml = function() {
+    const select = $("exportSingleAuditSelect");
+    if (!select || !select.value) {
+      alert("Please select an audit from the dropdown first.");
+      return;
+    }
+    const id = select.value;
+    const a = document.createElement("a");
+    a.href = `/api/export/single/${id}?format=eml`;
+    a.download = `email-audit-${id}.eml`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => document.body.removeChild(a), 150);
+    logActivity(`Downloaded raw RFC822 EML artifact for Audit #${id}`, "info");
+  };
+
+  window.downloadSingleAuditJson = function() {
+    const select = $("exportSingleAuditSelect");
+    if (!select || !select.value) {
+      alert("Please select an audit from the dropdown first.");
+      return;
+    }
+    const id = select.value;
+    const a = document.createElement("a");
+    a.href = `/api/export/single/${id}?format=json`;
+    a.download = `audit-forensic-${id}.json`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => document.body.removeChild(a), 150);
+    logActivity(`Downloaded forensic JSON artifact for Audit #${id}`, "info");
+  };
+
+  window.generateExecutiveReport = function() {
+    const emails = state.emails || [];
+    const stats = state.stats || {};
+    const total = stats.total || emails.length || 0;
+    const safe = stats.safe || 0;
+    const high = stats.high || 0;
+    const suspicious = stats.pending || 0;
+
+    const reportHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>SOC Executive Threat Briefing - mailMeta</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 40px; color: #1e293b; line-height: 1.5; }
+          .header { border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-end; }
+          .title { font-size: 24px; font-weight: 800; color: #0f172a; margin: 0; }
+          .subtitle { font-size: 13px; color: #64748b; margin-top: 4px; }
+          .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+          .stat-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; }
+          .stat-label { font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; }
+          .stat-val { font-size: 24px; font-weight: 900; margin-top: 4px; color: #0f172a; }
+          .high-val { color: #e11d48; }
+          .safe-val { color: #059669; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+          th { background: #0f172a; color: #ffffff; text-align: left; padding: 10px 12px; font-weight: 700; font-size: 11px; text-transform: uppercase; }
+          td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+          tr:nth-child(even) { background: #f8fafc; }
+          .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+          .badge-high { background: #ffe4e6; color: #e11d48; border: 1px solid #fecdd3; }
+          .badge-med { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
+          .badge-safe { background: #d1fae5; color: #059669; border: 1px solid #a7f3d0; }
+          .footer { margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between; }
+          @media print {
+            body { margin: 10mm; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <h1 class="title">mailMeta SOC Threat Intelligence Briefing</h1>
+            <div class="subtitle">Generated on ${new Date().toLocaleString()} • Forensic Inspection & Gemini AI Verification</div>
+          </div>
+          <button class="no-print" onclick="window.print()" style="padding: 8px 16px; background: #0f172a; color: #fff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">Print / Save as PDF</button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-label">Total Audited Items</div>
+            <div class="stat-val">${total}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Verified Authentic</div>
+            <div class="stat-val safe-val">${safe}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Phishing / Attack Threats</div>
+            <div class="stat-val high-val">${high}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Suspicious Relays</div>
+            <div class="stat-val">${suspicious}</div>
+          </div>
+        </div>
+
+        <h3 style="font-size: 14px; text-transform: uppercase; font-weight: 800; color: #0f172a; margin-top: 24px; margin-bottom: 8px;">Mailbox Threat Landscape Dossier</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Threat Score</th>
+              <th>Subject</th>
+              <th>From Address</th>
+              <th>Protocols (SPF/DKIM/DMARC)</th>
+              <th>Gemini AI Forensic Read Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${emails.map(e => {
+              const isHigh = (e.threat_score ?? 0) >= 60;
+              const isMed = (e.threat_score ?? 0) >= 21 && (e.threat_score ?? 0) < 60;
+              const badgeClass = isHigh ? "badge-high" : isMed ? "badge-med" : "badge-safe";
+              const badgeText = isHigh ? "Phishing" : isMed ? "Suspicious" : "Authentic";
+              return `
+                <tr>
+                  <td><strong>#${e.id}</strong></td>
+                  <td><span class="badge ${badgeClass}">${badgeText} (${e.threat_score ?? 0}/100)</span></td>
+                  <td><strong>${e.subject || "No Subject"}</strong></td>
+                  <td>${e.from_address || "unknown"}</td>
+                  <td>SPF: ${e.spf_status || 'FAIL'} | DKIM: ${e.dkim_status || 'FAIL'} | DMARC: ${e.dmarc_status || 'FAIL'}</td>
+                  <td>${e.ai_note?.read_note || 'Standard verified email flow.'}</td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+
+        <div class="footer">
+          <div>Engine: mailMeta v2.4 Enterprise SOC Edition</div>
+          <div>Report Classification: Internal Security Briefing • Confidential</div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const printWin = window.open("", "_blank");
+    if (printWin) {
+      printWin.document.write(reportHtml);
+      printWin.document.close();
+      logActivity("Generated executive printable SOC threat report.", "success");
+    } else {
+      triggerClientBlobDownload(reportHtml, "mailmeta-executive-soc-report.html", "text/html");
+      logActivity("Downloaded HTML SOC report artifact.", "success");
+    }
+  };
+
+  window.renderExportView = async function() {
+    if (!state.emails || !state.emails.length) {
+      await fetchAllEmails();
+    }
+
+    const countBadge = $("exportRecordCountBadge");
+    if (countBadge) {
+      countBadge.textContent = `${state.emails.length} Audits Ready for Export`;
+    }
+
+    // Populate Single Audit Select
+    const select = $("exportSingleAuditSelect");
+    if (select) {
+      if (state.emails.length > 0) {
+        select.innerHTML = state.emails.map(e => {
+          const score = e.threat_score ?? 0;
+          const label = `Audit #${e.id} [Score: ${score}/100] - ${esc((e.subject || "No Subject").slice(0, 45))} (${esc((e.from_address || "").slice(0, 30))})`;
+          return `<option value="${e.id}">${label}</option>`;
+        }).join("");
+      } else {
+        select.innerHTML = `<option value="">No audits in database</option>`;
+      }
+    }
+
+    updateExportPreview();
+  };
+
+  window.updateExportPreview = function() {
+    const tbody = $("exportPreviewTableBody");
+    if (!tbody) return;
+
+    const filter = $("exportCsvRiskFilter") ? $("exportCsvRiskFilter").value : "all";
+    const filteredEmails = (state.emails || []).filter(e => {
+      const score = e.threat_score ?? 0;
+      if (filter === "high") return score >= 60;
+      if (filter === "medium") return score >= 21 && score < 60;
+      if (filter === "safe") return score <= 20;
+      return true;
+    });
+
+    if (!filteredEmails.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-xs text-slate-400">No audits match the selected filter (${filter}).</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filteredEmails.map(e => {
+      const isHigh = (e.threat_score ?? 0) >= 60;
+      const isMed = (e.threat_score ?? 0) >= 21 && (e.threat_score ?? 0) < 60;
+      const badgeClass = isHigh
+        ? "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/30"
+        : isMed
+        ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/30"
+        : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30";
+      const badgeText = isHigh ? "🚨 Attack" : isMed ? "⚠️ Suspicious" : "🛡️ Authentic";
+      const aiNote = e.ai_note?.read_note || (isHigh ? "High-risk spoof attempt detected." : "Standard authentic business communication.");
+
+      return `
+        <tr class="hover:bg-slate-50 dark:hover:bg-[#1A1E24]/60 transition">
+          <td class="px-3 py-2.5 font-mono font-bold text-slate-900 dark:text-white">#${e.id}</td>
+          <td class="px-3 py-2.5 whitespace-nowrap">
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeClass} border">
+              ${badgeText} (${e.threat_score ?? 0})
+            </span>
+          </td>
+          <td class="px-3 py-2.5 font-medium text-slate-900 dark:text-white max-w-xs truncate">${esc(e.subject || "No Subject")}</td>
+          <td class="px-3 py-2.5 text-slate-600 dark:text-[#8A94A6] font-mono text-[11px] truncate max-w-xs">${esc(e.from_address || "unknown")}</td>
+          <td class="px-3 py-2.5 font-mono text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+            SPF:${e.spf_status || 'FAIL'} | DKIM:${e.dkim_status || 'FAIL'} | DMARC:${e.dmarc_status || 'FAIL'}
+          </td>
+          <td class="px-3 py-2.5 text-slate-600 dark:text-slate-300 max-w-xs truncate">${esc(aiNote)}</td>
+          <td class="px-3 py-2.5 text-right whitespace-nowrap">
+            <button onclick="selectEmail('${e.id}')" class="px-2.5 py-1 rounded bg-slate-100 dark:bg-[#1A1E24] hover:bg-slate-200 dark:hover:bg-[#282F3B] text-slate-800 dark:text-slate-200 text-[11px] font-semibold border border-slate-200 dark:border-[#2D3440] transition">
+              Inspect
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+  };
+
+  window.refreshExportData = async function() {
+    await fetchAllEmails();
+    renderExportView();
+    logActivity("Export dataset preview refreshed.", "info");
   };
 
   // ==================== MANUAL EML UPLOAD ====================
@@ -1045,7 +1444,7 @@
                   <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeClass} border whitespace-nowrap">
                     ${badgeText}
                   </span>
-                  <span class="text-xs font-bold text-slate-900 dark:text-white truncate cursor-pointer hover:text-slate-300" onclick="selectEmail(${emailId})">${esc(msg.subject || "No Subject")}</span>
+                  <span class="text-xs font-bold text-slate-900 dark:text-white truncate cursor-pointer hover:text-slate-300" onclick="selectEmail('${emailId}')">${esc(msg.subject || "No Subject")}</span>
                 </div>
                 <div class="flex items-center gap-2 text-[11px] text-slate-500 dark:text-[#8A94A6] flex-wrap">
                   <span class="truncate font-medium text-slate-700 dark:text-slate-300">From: ${esc(msg.from || "unknown")}</span>
@@ -1063,7 +1462,7 @@
                   <div class="text-[10px] uppercase font-bold text-[#8A94A6]">Threat Score</div>
                   <div class="text-xs font-mono font-bold ${isHigh ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}">${msg.threat_score ?? 0}/100</div>
                 </div>
-                <button onclick="selectEmail(${emailId})" class="px-3 py-1.5 rounded-md bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold border border-slate-200 transition whitespace-nowrap flex items-center gap-1.5">
+                <button onclick="selectEmail('${emailId}')" class="px-3 py-1.5 rounded-md bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold border border-slate-200 transition whitespace-nowrap flex items-center gap-1.5">
                   <span>Inspect & AI Report</span>
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </button>
@@ -1121,5 +1520,21 @@
     initAuth();
     initUploadHandlers();
     initSearch();
+
+    const inspectorModal = $("inspectorModal");
+    if (inspectorModal) {
+      inspectorModal.addEventListener("click", (e) => {
+        if (e.target === inspectorModal) {
+          closeInspector();
+        }
+      });
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closeInspector();
+        closeUploadModal();
+      }
+    });
   });
 })();

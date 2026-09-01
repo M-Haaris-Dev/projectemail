@@ -225,6 +225,14 @@
             <span class="whitespace-nowrap">Threat Intel & Trends</span>
           </button>
 
+          <button id="navTabExport" onclick="switchView('export')" class="w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium text-slate-600 dark:text-[#8A94A6] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#222730] border border-transparent hover:border-slate-200 dark:hover:border-[#2D3440] transition">
+            <div class="flex items-center gap-2.5">
+              <svg class="w-4 h-4 text-[#8A94A6] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              <span class="whitespace-nowrap">Export Details & Reports</span>
+            </div>
+            <span class="px-1.5 py-0.2 rounded text-[9px] bg-slate-100 dark:bg-[#1A1E24] text-slate-700 dark:text-slate-300 font-semibold border border-slate-200 dark:border-[#2D3440] whitespace-nowrap">CSV/JSON</span>
+          </button>
+
           <button id="navTabIntegrations" onclick="switchView('integrations')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium text-slate-600 dark:text-[#8A94A6] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#222730] border border-transparent hover:border-slate-200 dark:hover:border-[#2D3440] transition">
             <svg class="w-4 h-4 text-[#8A94A6] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/></svg>
             <span class="whitespace-nowrap">Integrations & API</span>
@@ -279,7 +287,7 @@
           </div>
         </div>
 
-        <!-- Top Header Actions & Nav Pills -->
+        <!-- Top Header Actions -->
         <div class="flex items-center gap-2 shrink-0">
           
           <!-- Global Search -->
@@ -291,19 +299,6 @@
           <!-- Theme Toggle Button -->
           <button onclick="toggleTheme()" class="p-1.5 rounded-md border border-slate-200 dark:border-[#2D3440] bg-white dark:bg-[#222730] text-slate-600 dark:text-[#8A94A6] hover:text-white transition" title="Toggle Light/Dark Theme">
             <svg id="themeIconHeader" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
-          </button>
-
-          <!-- Export CSV Button (Hidden on very small screens) -->
-          <button onclick="exportAuditCSV()" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-[#2D3440] bg-white dark:bg-[#222730] hover:bg-slate-50 dark:hover:bg-[#282F3B] text-slate-700 dark:text-slate-200 text-xs font-semibold transition whitespace-nowrap">
-            <svg class="w-3.5 h-3.5 text-[#8A94A6]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-            <span class="whitespace-nowrap">Export</span>
-          </button>
-
-          <!-- Phishing Simulation Trigger -->
-          <button onclick="triggerSimulate('anonymousemail')" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 text-xs font-semibold transition whitespace-nowrap">
-            <svg class="w-3.5 h-3.5 text-rose-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-            <span class="whitespace-nowrap hidden sm:inline">Simulate Threat</span>
-            <span class="sm:hidden">Simulate</span>
           </button>
 
           <!-- Upload EML Button (High contrast solid button) -->
@@ -555,7 +550,7 @@
                 <p class="text-[11px] text-slate-500 dark:text-[#8A94A6] leading-relaxed">Cryptographically signed message passing SPF, DKIM (d=google.com), and DMARC.</p>
               </div>
               <div class="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-[#2D3440]">
-                <button onclick="selectEmail(2)" class="grow px-2.5 py-1.5 rounded-md bg-slate-100 dark:bg-[#1A1E24] hover:bg-slate-200 dark:hover:bg-[#282F3B] text-slate-800 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-[#2D3440] transition whitespace-nowrap">
+                <button onclick="selectEmail('2')" class="grow px-2.5 py-1.5 rounded-md bg-slate-100 dark:bg-[#1A1E24] hover:bg-slate-200 dark:hover:bg-[#282F3B] text-slate-800 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-[#2D3440] transition whitespace-nowrap">
                   Inspect & Test
                 </button>
               </div>
@@ -764,6 +759,190 @@
         </div>
       </main>
 
+      <!-- ==================== VIEW: EXPORT & REPORTS ==================== -->
+      <main id="viewExport" class="grow p-4 sm:p-5 space-y-4 max-w-7xl mx-auto w-full hidden">
+        
+        <!-- Header & Stats Summary -->
+        <div class="p-4 sm:p-5 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] space-y-3">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <svg class="w-5 h-5 text-slate-700 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                <span>Export Details & Forensic Intelligence Reports</span>
+              </h2>
+              <p class="text-xs text-slate-500 dark:text-[#8A94A6]">Export sanitized or complete email forensic audits for SIEM analysis, compliance archiving, or executive briefings.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="exportRecordCountBadge" class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 dark:bg-[#1A1E24] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-[#2D3440] whitespace-nowrap">
+                Loading database count...
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Export Formats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          
+          <!-- Card 1: CSV Export -->
+          <div class="p-4 sm:p-5 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] flex flex-col justify-between space-y-4">
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs border border-emerald-500/20">
+                    CSV
+                  </div>
+                  <div>
+                    <h3 class="text-xs font-bold text-slate-900 dark:text-white">SIEM CSV Spreadsheet</h3>
+                    <span class="text-[10px] text-slate-500 dark:text-[#8A94A6]">Splunk, Sentinel, Excel</span>
+                  </div>
+                </div>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 whitespace-nowrap">Ready</span>
+              </div>
+              <p class="text-xs text-slate-600 dark:text-[#8A94A6] leading-relaxed">
+                Includes threat scores, sender reputation, origin IP, SPF/DKIM/DMARC matrix, and Gemini AI executive summaries.
+              </p>
+              <div class="space-y-1.5 pt-1">
+                <label class="text-[11px] font-bold text-slate-700 dark:text-slate-300">Filter Risk Level:</label>
+                <select id="exportCsvRiskFilter" onchange="updateExportPreview()" class="w-full bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] rounded-md px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-slate-400">
+                  <option value="all">All Audits (Everything)</option>
+                  <option value="high">Phishing Attacks Only (Score ≥ 60)</option>
+                  <option value="medium">Suspicious Relays (Score 21 - 59)</option>
+                  <option value="safe">Authentic Passes (Score ≤ 20)</option>
+                </select>
+              </div>
+            </div>
+            <button onclick="downloadCsvExport()" class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold border border-slate-200 transition whitespace-nowrap">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              <span>Download CSV Report</span>
+            </button>
+          </div>
+
+          <!-- Card 2: JSON Forensics Archive -->
+          <div class="p-4 sm:p-5 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] flex flex-col justify-between space-y-4">
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-xs border border-sky-500/20">
+                    JSON
+                  </div>
+                  <div>
+                    <h3 class="text-xs font-bold text-slate-900 dark:text-white">Full Forensics JSON</h3>
+                    <span class="text-[10px] text-slate-500 dark:text-[#8A94A6]">STIX / JSON-LD / API</span>
+                  </div>
+                </div>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 whitespace-nowrap">Full Depth</span>
+              </div>
+              <p class="text-xs text-slate-600 dark:text-[#8A94A6] leading-relaxed">
+                Complete raw RFC822 metadata, cryptographic DKIM headers, IP geolocation data, and Gemini heuristic reasoning arrays.
+              </p>
+              <div class="space-y-1.5 pt-1">
+                <label class="text-[11px] font-bold text-slate-700 dark:text-slate-300">Format Option:</label>
+                <select id="exportJsonFormat" class="w-full bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] rounded-md px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-slate-400">
+                  <option value="pretty">Pretty Formatted (2-space Indent)</option>
+                  <option value="compact">Minified Stream</option>
+                </select>
+              </div>
+            </div>
+            <button onclick="downloadJsonExport()" class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md border border-slate-200 dark:border-[#2D3440] hover:bg-slate-100 dark:hover:bg-[#1A1E24] text-slate-800 dark:text-slate-100 text-xs font-bold transition whitespace-nowrap">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+              <span>Download JSON Archive</span>
+            </button>
+          </div>
+
+          <!-- Card 3: Executive SOC Report & Print -->
+          <div class="p-4 sm:p-5 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] flex flex-col justify-between space-y-4">
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-xs border border-purple-500/20">
+                    PDF
+                  </div>
+                  <div>
+                    <h3 class="text-xs font-bold text-slate-900 dark:text-white">Executive SOC Briefing</h3>
+                    <span class="text-[10px] text-slate-500 dark:text-[#8A94A6]">Printable Audit Document</span>
+                  </div>
+                </div>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 whitespace-nowrap">Print Ready</span>
+              </div>
+              <p class="text-xs text-slate-600 dark:text-[#8A94A6] leading-relaxed">
+                Generate an executive printable security report summarizing mailbox threat posture, phishing campaigns, and recommended remediation.
+              </p>
+              <div class="space-y-1.5 pt-1">
+                <label class="text-[11px] font-bold text-slate-700 dark:text-slate-300">Report Scope:</label>
+                <div class="text-[11px] font-mono text-slate-500 dark:text-[#8A94A6] bg-slate-50 dark:bg-[#1A1E24] p-2 rounded border border-slate-200 dark:border-[#2D3440]">
+                  Full Mailbox Forensic Snapshot + AI Notes
+                </div>
+              </div>
+            </div>
+            <button onclick="generateExecutiveReport()" class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition whitespace-nowrap">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+              <span>Generate & Print Report</span>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Single Audit Individual EML Downloader -->
+        <div class="p-4 sm:p-5 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] space-y-3">
+          <div>
+            <h3 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Single Email Audit Artifact Downloader</h3>
+            <p class="text-xs text-slate-500 dark:text-[#8A94A6]">Select any individual audited email to download its raw .eml RFC822 file or forensic JSON descriptor.</p>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
+            <div class="sm:col-span-8">
+              <select id="exportSingleAuditSelect" class="w-full bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] rounded-md px-3 py-2 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-1 focus:ring-slate-400">
+                <option value="">Loading audits...</option>
+              </select>
+            </div>
+            <div class="sm:col-span-2">
+              <button onclick="downloadSingleAuditEml()" class="w-full px-3 py-2 rounded-md bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold border border-slate-200 transition whitespace-nowrap">
+                Download .EML
+              </button>
+            </div>
+            <div class="sm:col-span-2">
+              <button onclick="downloadSingleAuditJson()" class="w-full px-3 py-2 rounded-md border border-slate-200 dark:border-[#2D3440] text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#1A1E24] text-xs font-semibold transition whitespace-nowrap">
+                Download JSON
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Export Dataset Preview -->
+        <div class="p-4 sm:p-5 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="space-y-0.5">
+              <h3 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Live Export Dataset Preview</h3>
+              <p class="text-xs text-slate-500 dark:text-[#8A94A6]">Real-time preview of records ready for export based on your selected criteria.</p>
+            </div>
+            <button onclick="refreshExportData()" class="px-2.5 py-1 rounded text-xs border border-slate-200 dark:border-[#2D3440] text-slate-600 dark:text-[#8A94A6] hover:text-white hover:bg-slate-100 dark:hover:bg-[#1A1E24] transition">
+              🔄 Refresh Preview
+            </button>
+          </div>
+
+          <div class="overflow-x-auto rounded-md border border-slate-200 dark:border-[#2D3440]">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-100 dark:bg-[#1A1E24] text-slate-600 dark:text-[#8A94A6] uppercase text-[10px] font-bold border-b border-slate-200 dark:border-[#2D3440]">
+                <tr>
+                  <th class="px-3 py-2.5">ID</th>
+                  <th class="px-3 py-2.5">Threat Score</th>
+                  <th class="px-3 py-2.5">Subject</th>
+                  <th class="px-3 py-2.5">From Address</th>
+                  <th class="px-3 py-2.5">Protocols (SPF/DKIM/DMARC)</th>
+                  <th class="px-3 py-2.5">AI Executive Synopsis</th>
+                  <th class="px-3 py-2.5 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="exportPreviewTableBody" class="divide-y divide-slate-100 dark:divide-[#2D3440] font-sans">
+                <tr>
+                  <td colspan="7" class="px-4 py-6 text-center text-xs text-slate-400">Loading export preview records...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </main>
+
       <!-- ==================== VIEW: SETTINGS ==================== -->
       <main id="viewSettings" class="grow p-4 sm:p-5 space-y-4 max-w-7xl mx-auto w-full hidden">
         <div class="p-4 sm:p-5 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] space-y-4">
@@ -827,60 +1006,74 @@
           </div>
           <div class="text-right space-y-0.5">
             <span class="text-xs font-semibold text-slate-500 dark:text-[#8A94A6]">Origin MTA IP:</span>
-            <div id="drawerOriginIP" class="font-mono text-xs font-bold text-white">185.107.56.22</div>
+            <div id="drawerOriginIP" class="font-mono text-xs font-bold text-slate-900 dark:text-white">185.107.56.22</div>
           </div>
         </div>
 
-        <!-- Google Gemini AI Read Note & Safety Assessment Box -->
-        <div id="drawerAiNoteCard" class="p-4 rounded-lg bg-slate-50 dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] space-y-3">
+        <!-- Google Gemini AI Read Note & Structured Assessment Box -->
+        <div id="drawerAiNoteCard" class="p-4 rounded-lg bg-slate-50 dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] space-y-3.5">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <div class="w-5 h-5 rounded bg-slate-200 dark:bg-[#1A1E24] text-slate-800 dark:text-slate-100 flex items-center justify-center font-bold text-xs border border-slate-200 dark:border-[#2D3440]">
+              <div class="w-6 h-6 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs border border-indigo-500/20">
                 ✨
               </div>
-              <span class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">Gemini AI Simple Read Note</span>
+              <div>
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white block">Gemini AI Simple Read Note</span>
+                <span class="text-[10px] text-slate-500 dark:text-[#8A94A6]">Plain-English Executive Intelligence</span>
+              </div>
             </div>
             <div class="flex items-center gap-2">
-              <span id="drawerAiSafetyBadge" class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap">
+              <span id="drawerAiSafetyBadge" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap">
                 🛡️ Safe to Read
               </span>
-              <button id="drawerAiRefreshBtn" onclick="refreshCurrentEmailAiNote()" title="Re-run Gemini AI Analysis" class="p-1 rounded hover:bg-slate-200 dark:hover:bg-[#1A1E24] text-[#8A94A6] hover:text-white text-xs transition">
+              <button id="drawerAiRefreshBtn" onclick="refreshCurrentEmailAiNote()" title="Re-run Gemini AI Analysis" class="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-[#1A1E24] text-[#8A94A6] hover:text-white text-xs transition border border-slate-200 dark:border-[#2D3440]">
                 🔄
               </button>
             </div>
           </div>
 
-          <!-- Read Note synopsis -->
+          <!-- 1. What is that? (Executive Synopsis) -->
           <div class="space-y-1">
-            <div class="text-[10px] font-bold text-slate-500 dark:text-[#8A94A6] uppercase tracking-wider">Executive Synopsis:</div>
-            <p id="drawerAiReadNote" class="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-sans font-medium bg-white dark:bg-[#1A1E24] p-2.5 rounded-md border border-slate-200 dark:border-[#2D3440]">
+            <div class="text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+              <span>📌</span>
+              <span>What is that? (Email Summary)</span>
+            </div>
+            <p id="drawerAiReadNote" class="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-sans font-medium bg-white dark:bg-[#1A1E24] p-3 rounded-md border border-slate-200 dark:border-[#2D3440]">
               Loading Gemini AI summary...
             </p>
           </div>
 
-          <!-- Key Elements / Extracted Items -->
+          <!-- 2. How dangerous is that or not? (Threat & Risk Reasoning) -->
+          <div id="drawerAiThreatWrapper" class="space-y-1">
+            <div class="text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+              <span>⚠️</span>
+              <span>How dangerous is that or not? (Safety & Risk Verdict)</span>
+            </div>
+            <div class="bg-white dark:bg-[#1A1E24] p-3 rounded-md border border-slate-200 dark:border-[#2D3440]">
+              <p id="drawerAiThreatReasoning" class="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                Evaluating safety status...
+              </p>
+            </div>
+          </div>
+
+          <!-- 3. What are the things? (Key Elements & Extracted Signals) -->
           <div id="drawerAiKeyElementsWrapper" class="space-y-1">
-            <div class="text-[10px] font-bold text-slate-500 dark:text-[#8A94A6] uppercase tracking-wider">Key Elements Detected:</div>
-            <div id="drawerAiKeyElementsList" class="flex flex-wrap gap-1.5 text-[11px]">
+            <div class="text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+              <span>🔍</span>
+              <span>What are the things detected? (Key Elements)</span>
+            </div>
+            <div id="drawerAiKeyElementsList" class="flex flex-wrap gap-1.5 text-[11px] pt-0.5">
               <!-- Dynamic Chips -->
             </div>
           </div>
 
-          <!-- AI Threat Reasoning -->
-          <div id="drawerAiThreatWrapper" class="space-y-1">
-            <div class="text-[10px] font-bold text-slate-500 dark:text-[#8A94A6] uppercase tracking-wider">Safety & Risk Reasoning:</div>
-            <p id="drawerAiThreatReasoning" class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              Evaluating safety status...
-            </p>
-          </div>
-
-          <!-- Action Suggestions -->
-          <div id="drawerAiSuggestionsWrapper" class="space-y-1 pt-1.5 border-t border-slate-200 dark:border-[#2D3440]">
-            <div class="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+          <!-- 4. What to do? (Action Suggestions) -->
+          <div id="drawerAiSuggestionsWrapper" class="space-y-1.5 pt-2 border-t border-slate-200 dark:border-[#2D3440]">
+            <div class="text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
               <span>💡</span>
-              <span>Recommended Action:</span>
+              <span>What to do? (Recommended Action Steps)</span>
             </div>
-            <ul id="drawerAiSuggestionsList" class="space-y-1 text-xs text-slate-600 dark:text-slate-300 list-disc list-inside">
+            <ul id="drawerAiSuggestionsList" class="space-y-1.5 text-xs text-slate-700 dark:text-slate-300 list-disc list-inside bg-white dark:bg-[#1A1E24] p-3 rounded-md border border-slate-200 dark:border-[#2D3440]">
               <!-- Dynamic suggestions -->
             </ul>
           </div>
@@ -904,7 +1097,7 @@
 
         <!-- Heuristic Findings -->
         <div class="space-y-1.5">
-          <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#8A94A6]">Forensic Findings</span>
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#8A94A6]">Forensic Findings & Anomaly Flags</span>
           <ul id="drawerFindingsList" class="space-y-1 text-xs bg-slate-50 dark:bg-[#222730] p-3 rounded-md border border-slate-200 dark:border-[#2D3440]">
             <!-- Dynamic findings -->
           </ul>
@@ -946,7 +1139,7 @@
         <div class="space-y-1.5">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#8A94A6]">Raw RFC822 Headers</span>
-            <button onclick="copyRawEmail()" class="text-xs text-white hover:underline font-semibold">Copy Headers</button>
+            <button onclick="copyRawEmail()" class="text-xs text-slate-900 dark:text-white hover:underline font-semibold">Copy Headers</button>
           </div>
           <pre id="drawerRawSource" class="p-3 rounded-md bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] text-[10px] font-mono text-slate-700 dark:text-slate-300 overflow-x-auto max-h-48 whitespace-pre-wrap select-text"></pre>
         </div>

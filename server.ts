@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import path from "node:path";
 import fs from "node:fs";
 import { db } from "./src/database.js";
+import { EmailMeta } from "./src/analyzer.js";
 import { analyzeEmail } from "./src/pipeline.js";
 import { seedInitialDatabase } from "./src/seedData.js";
 import { GmailService } from "./src/gmail.js";
@@ -161,50 +162,52 @@ app.get("/api/gmail/messages", async (req: Request, res: Response) => {
 
   if (token) {
     try {
-      const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 15;
+      const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 50;
       const query = req.query.q ? String(req.query.q) : undefined;
-      const messages = await GmailService.listMessages(token, limit, query);
-      if (messages && messages.length > 0) {
-        // Enrich messages with Gemini AI read notes and sync to DB cache
-        const enrichedMessages = messages.map((m) => {
-          const aiNote = geminiService.generateFallbackNote({
-            subject: m.subject,
-            from: m.from,
-            raw: m.snippet,
-            spf_status: m.spf_status,
-            dkim_status: m.dkim_status,
-            dmarc_status: m.dmarc_status,
-            threat_score: m.threat_score,
-            risk_level: m.risk_level,
-          });
-
-          const isHigh = (m.threat_score || 0) >= 60;
-          const isMed = (m.threat_score || 0) >= 21 && (m.threat_score || 0) < 60;
-          const verdict = isHigh ? "Phishing Attack" : isMed ? "Suspicious Relay" : "Authentic Pass";
-
-          return {
-            id: m.id,
-            gmailId: m.id,
-            subject: m.subject || "No Subject",
-            from: m.from,
-            from_name: m.from_name || "",
-            from_address: m.from_address || m.from,
-            date: m.date || new Date().toLocaleString(),
-            date_ts: m.date_ts || Math.floor(Date.now() / 1000),
-            threat_score: m.threat_score ?? 0,
-            risk_score: m.threat_score ?? 0,
-            risk_level: m.risk_level || "safe",
-            spf_status: m.spf_status || "PASS",
-            dkim_status: m.dkim_status || "PASS",
-            dmarc_status: m.dmarc_status || "PASS",
+      const liveMessages = await GmailService.listMessages(token, limit, query);
+      if (liveMessages && liveMessages.length > 0) {
+        // Sync live messages into DB cache so everything stays matched
+        for (const item of liveMessages) {
+          const fromAddr = item.from_address || item.from || "unknown@gmail.com";
+          const meta: EmailMeta = {
+            message_id: item.id || `gmail-${Date.now()}`,
+            subject: item.subject || "No Subject",
+            from_addr: fromAddr,
+            from_name: item.from_name || "",
+            sender_addr: fromAddr,
+            reply_to: item.from || fromAddr,
+            return_path: item.from || fromAddr,
+            envelope_from: item.from || fromAddr,
+            date: item.date || new Date().toISOString(),
+            date_ts: item.date_ts || Math.floor(Date.now() / 1000),
+            content_type: "text/plain",
+            received_chain: [],
             ip_address: "127.0.0.1",
-            verdict,
-            snippet: m.snippet || "",
-            ai_note: aiNote,
+            headers: {},
+            raw: item.snippet || item.subject,
+            authentication_results: [],
+            risk_score: item.threat_score ?? 0,
+            risk_level: item.risk_level || "safe",
+            spf: { status: item.spf_status || "PASS", explanation: "SPF verification evaluated." },
+            dkim: { status: item.dkim_status || "PASS", detail: "DKIM cryptographic signature verification." },
+            dmarc: { status: item.dmarc_status || "PASS", detail: "DMARC policy alignment check." },
+            findings: [],
+            ptr: null,
+            geo: null,
+            chain_ips: [],
           };
-        });
-        res.json({ messages: enrichedMessages, count: enrichedMessages.length, synced_source: "gmail_live_oauth" });
-        return;
+          const aiNote = geminiService.generateFallbackNote({
+            subject: item.subject,
+            from: item.from,
+            raw: item.snippet,
+            spf_status: item.spf_status,
+            dkim_status: item.dkim_status,
+            dmarc_status: item.dmarc_status,
+            threat_score: item.threat_score,
+            risk_level: item.risk_level,
+          });
+          db.upsertMessage("gmail-authenticated", `gmail-${item.id}`, meta, item.snippet || item.subject, aiNote);
+        }
       }
     } catch (err: any) {
       console.warn("Live Gmail fetch fallback to synced SOC database:", err?.message || err);
@@ -212,11 +215,11 @@ app.get("/api/gmail/messages", async (req: Request, res: Response) => {
   }
 
   // Synced from SOC database so dashboard and live inbox checking page are 100% synchronized and matching!
-  const dbList = db.listMessages({ limit: 50, sort: "date_ts" });
+  const dbList = db.listMessages({ limit: 100, sort: "date_ts" });
   const messages = dbList.rows.map((m) => {
     const isHigh = m.risk_score >= 60;
     const isMed = m.risk_score >= 21 && m.risk_score < 60;
-    const verdict = isHigh ? "Phishing Attack" : isMed ? "Suspicious Relay" : "Authentic Pass";
+    const verdict = isHigh ? "🚨 HIGH RISK / PHISHING ATTACK" : isMed ? "⚠️ SUSPICIOUS RELAY" : "🛡️ AUTHENTIC / VERIFIED PASS";
     const aiNote = m.ai_note || geminiService.generateFallbackNote({
       subject: m.subject,
       from: m.from_addr,
@@ -240,17 +243,24 @@ app.get("/api/gmail/messages", async (req: Request, res: Response) => {
       from: m.from_addr || (m.from_name ? `${m.from_name} <unknown>` : "unknown@soc.sec"),
       from_name: m.from_name || "",
       from_address: m.from_addr || "",
+      reply_to: m.reply_to || m.from_addr || "",
+      return_path: m.envelope_from || m.from_addr || "",
       date: new Date(m.date_ts * 1000).toLocaleString(),
       date_ts: m.date_ts,
+      created_at: m.date_ts,
       threat_score: m.risk_score,
       risk_score: m.risk_score,
       risk_level: m.risk_level,
       spf_status: m.spf_status ? m.spf_status.toUpperCase() : "PASS",
       dkim_status: m.dkim_status ? m.dkim_status.toUpperCase() : "PASS",
       dmarc_status: m.dmarc_status ? m.dmarc_status.toUpperCase() : "PASS",
+      origin_ip: m.ip_address || "127.0.0.1",
       ip_address: m.ip_address || "127.0.0.1",
       verdict,
-      snippet: (m.raw || "").replace(/[\r\n]+/g, " ").slice(0, 120),
+      snippet: (m.raw || "").replace(/[\r\n]+/g, " ").slice(0, 140),
+      raw: m.raw,
+      raw_rfc822: m.raw,
+      findings: m.data?.findings || [],
       ai_note: aiNote,
     };
   });
@@ -796,7 +806,132 @@ app.get("/api/chart-data", (_req: Request, res: Response) => {
   });
 });
 
-// 12. Reset to default demo data
+// 12. Export Endpoints (CSV, JSON, HTML Executive Report, Single Audit)
+app.get("/api/export/csv", (req: Request, res: Response) => {
+  const risk = (req.query.risk || req.query.risk_level || "all") as string;
+  const list = db.listMessages({ limit: 500, risk_level: risk });
+
+  // Escape helper for CSV cells
+  const csvEscape = (val: any) => {
+    if (val == null) return '""';
+    const s = String(val).replace(/"/g, '""');
+    return `"${s}"`;
+  };
+
+  const headers = [
+    "Audit ID",
+    "Timestamp",
+    "Subject",
+    "From",
+    "Origin IP",
+    "Threat Score",
+    "Risk Level",
+    "SPF Status",
+    "DKIM Status",
+    "DMARC Status",
+    "Verdict",
+    "AI Read Note",
+    "AI Safety Status",
+  ];
+
+  const rows = list.rows.map((r) => {
+    const isHigh = r.risk_score >= 60;
+    const isMed = r.risk_score >= 21 && r.risk_score < 60;
+    const verdict = isHigh ? "Phishing Attack" : isMed ? "Suspicious Relay" : "Authentic Pass";
+    const dateStr = new Date(r.date_ts * 1000).toISOString();
+    const readNote = r.ai_note?.read_note || "";
+    const safetyStatus = r.ai_note?.safety_status || (r.ai_note?.is_safe ? "Safe" : "Dangerous");
+
+    return [
+      r.id,
+      dateStr,
+      r.subject || "No Subject",
+      r.from_addr || "unknown",
+      r.ip_address || "127.0.0.1",
+      r.risk_score,
+      r.risk_level,
+      r.spf_status || "FAIL",
+      r.dkim_status || "FAIL",
+      r.dmarc_status || "FAIL",
+      verdict,
+      readNote,
+      safetyStatus,
+    ].map(csvEscape).join(",");
+  });
+
+  const csvContent = [headers.map(csvEscape).join(","), ...rows].join("\r\n");
+  const filename = `mailmeta-forensic-audits-${new Date().toISOString().slice(0, 10)}.csv`;
+
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.send(csvContent);
+});
+
+app.get("/api/export/json", (req: Request, res: Response) => {
+  const risk = (req.query.risk || req.query.risk_level || "all") as string;
+  const list = db.listMessages({ limit: 500, risk_level: risk });
+  const stats = db.stats();
+
+  const exportData = {
+    platform: "mailMeta Forensics & Threat Intelligence",
+    exported_at: new Date().toISOString(),
+    filter_applied: risk,
+    statistics: stats,
+    total_records: list.rows.length,
+    audits: list.rows.map((r) => ({
+      id: r.id,
+      account: r.account,
+      uid: r.uid,
+      message_id: r.message_id,
+      date: new Date(r.date_ts * 1000).toISOString(),
+      subject: r.subject,
+      from: r.from_addr,
+      from_name: r.from_name,
+      reply_to: r.reply_to,
+      envelope_from: r.envelope_from,
+      origin_ip: r.ip_address,
+      threat_score: r.risk_score,
+      risk_level: r.risk_level,
+      protocols: {
+        spf: r.spf_status,
+        dkim: r.dkim_status,
+        dmarc: r.dmarc_status,
+      },
+      findings: r.data?.findings || [],
+      ai_note: r.ai_note,
+      raw_rfc822_snippet: (r.raw || "").slice(0, 500),
+    })),
+  };
+
+  const filename = `mailmeta-export-${new Date().toISOString().slice(0, 10)}.json`;
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.send(JSON.stringify(exportData, null, 2));
+});
+
+app.get("/api/export/single/:id", (req: Request, res: Response) => {
+  const id = parseInt(req.params.id, 10);
+  const msg = db.getMessage(id);
+  if (!msg) {
+    res.status(404).send("Audit not found");
+    return;
+  }
+
+  const format = (req.query.format || "eml") as string;
+  if (format === "json") {
+    const filename = `audit-${id}-${new Date().toISOString().slice(0, 10)}.json`;
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(JSON.stringify(msg, null, 2));
+  } else {
+    const filename = `email-audit-${id}.eml`;
+    res.setHeader("Content-Type", "message/rfc822");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(msg.raw || `Subject: ${msg.subject}\nFrom: ${msg.from_addr}\n\n[Empty content]`);
+  }
+});
+
+// 13. Reset to default demo data
 app.post("/api/reset", async (_req: Request, res: Response) => {
   db.clear();
   await seedInitialDatabase(db);
