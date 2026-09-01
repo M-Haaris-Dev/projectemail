@@ -1,0 +1,6 @@
+{
+  "name": "mailMeta",
+  "description": "Email forensic and threat intelligence platform with live Gmail ingestion, SPF/DKIM/DMARC verification, IP geolocation, and automated threat scoring.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

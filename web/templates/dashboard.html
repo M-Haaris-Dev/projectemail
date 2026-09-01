@@ -1,97 +1,999 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>mailMeta — Email Forensics</title>
-<link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>mailMeta — Email Forensics & Live Threat Intelligence</title>
+  <meta name="description" content="Professional SOC email forensics platform with SPF, DKIM, and DMARC verification, MTA hop analysis, and threat intelligence.">
+
+  <!-- Google Identity Services (GIS) for Google / Gmail OAuth -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <!-- Tailwind CSS & Google Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            darkMain: '#1A1E24',
+            darkSidebar: '#14171C',
+            darkCard: '#222730',
+            darkInner: '#1A1E24',
+            darkBorder: '#2D3440',
+            darkBorderHover: '#3B4454',
+            darkMuted: '#8A94A6',
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              200: '#bae6fd',
+              300: '#7dd3fc',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              800: '#075985',
+              900: '#0c4a6e',
+            },
+            soc: {
+              canvas: '#1A1E24',
+              card: '#222730',
+              inner: '#1A1E24',
+              border: '#2D3440',
+              borderHover: '#3B4454',
+              cyan: '#38bdf8',
+              sky: '#22d3ee',
+              mint: '#34d399',
+              rose: '#f43f5e',
+            }
+          },
+          boxShadow: {
+            'xs': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+          }
+        }
+      }
+    }
+  </script>
 </head>
-<body>
-<header class="topbar">
-  <div class="brand">
-    <span class="logo">mailMeta</span>
-    <span class="tagline">Email Header Forensics · SPF / DKIM / DMARC</span>
-  </div>
-  <div class="topbar-right">
-    <div class="monitor-status">
-      <span class="dot" id="monitorDot"></span>
-      <span id="monitorText">checking…</span>
+<body class="bg-slate-50 dark:bg-[#1A1E24] text-slate-900 dark:text-[#FFFFFF] min-h-screen flex flex-col antialiased font-sans transition-colors duration-150 selection:bg-slate-500/30 selection:text-white">
+
+  <!-- ==================== 1. INITIAL LOGIN / AUTHENTICATION VIEW ==================== -->
+  <div id="viewAuth" class="min-h-screen flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden bg-slate-50 dark:bg-[#1A1E24]">
+    <!-- Subtle background accent grid -->
+    <div class="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#2D3440_1px,transparent_1px),linear-gradient(to_bottom,#2D3440_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_40%,#000_70%,transparent_100%)] opacity-30 pointer-events-none"></div>
+
+    <!-- Theme toggle on Login screen -->
+    <div class="absolute top-5 right-5 z-10">
+      <button onclick="toggleTheme()" class="p-2 rounded-md bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] text-slate-600 dark:text-[#8A94A6] hover:text-white transition" title="Toggle Light/Dark Theme">
+        <svg id="themeIconLogin" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+      </button>
     </div>
-    <button class="btn ghost" id="refreshBtn">Refresh</button>
-  </div>
-</header>
 
-<main class="container">
+    <!-- Auth Card Surface -->
+    <div class="w-full max-w-md bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] rounded-lg p-5 sm:p-6 space-y-5 relative z-10">
+      
+      <!-- Brand Header -->
+      <div class="text-center space-y-1.5">
+        <div class="inline-flex items-center justify-center w-10 h-10 rounded-md bg-white text-slate-900 border border-slate-200 dark:border-[#2D3440] mx-auto">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        </div>
+        <div class="space-y-0.5">
+          <h1 class="text-lg font-bold text-slate-900 dark:text-white tracking-tight">mailMeta</h1>
+          <p class="text-xs text-slate-500 dark:text-[#8A94A6]">Email Forensics & Threat Analytics Dashboard</p>
+        </div>
+      </div>
 
-  <section class="hero">
-    <h1>Email Analysis Dashboard</h1>
-    <p>mailMeta connects to a mailbox over IMAP, analyses every incoming message, and verifies the sender using live DNS records. Each email is scored 0–100 and labelled <strong>Safe · Low · Medium · High</strong>.</p>
-  </section>
+      <!-- Auth Error Notification (hidden by default) -->
+      <div id="authErrorBanner" class="hidden p-3 rounded-md bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 text-xs flex items-center gap-2">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span id="authErrorText">Invalid credentials.</span>
+      </div>
 
-  <section class="stats">
-    <div class="stat-card"><div class="stat-num" id="statTotal">–</div><div class="stat-label">Emails analysed</div></div>
-    <div class="stat-card safe"><div class="stat-num" id="statSafe">–</div><div class="stat-label">Safe</div></div>
-    <div class="stat-card low"><div class="stat-num" id="statLow">–</div><div class="stat-label">Low risk</div></div>
-    <div class="stat-card medium"><div class="stat-num" id="statMedium">–</div><div class="stat-label">Medium risk</div></div>
-    <div class="stat-card high"><div class="stat-num" id="statHigh">–</div><div class="stat-label">High risk / suspicious</div></div>
-  </section>
+      <!-- Google Workspace Single Sign-On Button -->
+      <div class="space-y-3">
+        <button id="btnLoginGoogle" onclick="handleGoogleSignIn()" class="w-full flex items-center justify-center gap-2.5 px-3.5 py-2 rounded-md border border-slate-200 dark:border-[#2D3440] bg-white dark:bg-[#1A1E24] hover:bg-slate-50 dark:hover:bg-[#282F3B] text-slate-700 dark:text-slate-200 text-xs font-semibold transition">
+          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <span class="whitespace-nowrap">Sign in with Google Workspace</span>
+        </button>
 
-  <section class="filters">
-    <label>Risk level
-      <select id="filterLevel">
-        <option value="all">All</option>
-        <option value="high">High</option>
-        <option value="medium">Medium</option>
-        <option value="low">Low</option>
-        <option value="safe">Safe</option>
-      </select>
-    </label>
-    <label>Mailbox
-      <select id="filterAccount"><option value="">All</option></select>
-    </label>
-    <label class="grow">Search
-      <input type="text" id="filterSearch" placeholder="Subject, sender, domain…">
-    </label>
-    <button class="btn ghost" id="exportBtn">Export CSV</button>
-  </section>
+        <div class="relative flex items-center justify-center">
+          <div class="border-t border-slate-200 dark:border-[#2D3440] w-full"></div>
+          <span class="bg-white dark:bg-[#222730] px-3 text-[11px] font-medium text-slate-400 dark:text-[#8A94A6] uppercase tracking-wider whitespace-nowrap">Or SOC analyst login</span>
+        </div>
+      </div>
 
-  <div class="table-card">
-    <table class="mtable">
-      <thead>
-        <tr>
-          <th>Verdict</th>
-          <th>Sent</th>
-          <th>From</th>
-          <th>Subject</th>
-          <th>SPF</th>
-          <th>DKIM</th>
-          <th>DMARC</th>
-          <th>Origin (IP · location)</th>
-          <th class="num">Score</th>
-        </tr>
-      </thead>
-      <tbody id="emailRows">
-        <tr><td colspan="9" class="empty">Loading…</td></tr>
-      </tbody>
-    </table>
-    <div class="pagination">
-      <button class="btn ghost" id="prevPage" disabled>← Previous</button>
-      <span id="pageInfo">Page 1</span>
-      <button class="btn ghost" id="nextPage" disabled>Next →</button>
+      <!-- Credential Form -->
+      <form id="authLoginForm" onsubmit="handleFormLogin(event)" class="space-y-3.5">
+        <div class="space-y-1">
+          <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">Workstation Email</label>
+          <input type="email" id="loginEmail" required value="haarishaaris2007@gmail.com" placeholder="analyst@security.soc" class="w-full px-3 py-2 text-xs rounded-md bg-white dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:border-slate-400 transition">
+        </div>
+
+        <div class="space-y-1">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">Passcode / Key</label>
+            <span class="text-[11px] text-[#8A94A6]">Demo active</span>
+          </div>
+          <input type="password" id="loginPassword" required value="••••••••" placeholder="••••••••" class="w-full px-3 py-2 text-xs rounded-md bg-white dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:border-slate-400 transition">
+        </div>
+
+        <button type="submit" id="btnSubmitLogin" class="w-full px-3.5 py-2 rounded-md bg-white hover:bg-slate-100 active:bg-slate-200 text-slate-900 text-xs font-bold border border-slate-200 transition whitespace-nowrap flex items-center justify-center gap-2">
+          <span>Authenticate & Open Console</span>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+        </button>
+      </form>
+
+      <!-- Quick Roles & Sandbox Mode -->
+      <div class="pt-2.5 border-t border-slate-100 dark:border-[#2D3440] flex items-center justify-between text-[11px]">
+        <button onclick="handleQuickLogin('haarishaaris2007@gmail.com', 'SOC Lead')" class="text-white hover:underline font-semibold whitespace-nowrap">
+          Quick Lead Analyst Login
+        </button>
+        <button onclick="handleQuickLogin('sandbox-guest@soc.internal', 'Guest Investigator')" class="text-[#8A94A6] hover:text-white font-medium whitespace-nowrap">
+          Explore Demo Sandbox
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Security statement footer -->
+    <div class="mt-4 text-center text-[11px] text-[#8A94A6]">
+      Zero-retention in-memory RFC822 forensic inspection & threat evaluation.
     </div>
   </div>
 
-</main>
+  <!-- ==================== 2. MAIN APPLICATION WORKSPACE ==================== -->
+  <div id="viewApp" class="min-h-screen flex flex-col hidden bg-slate-50 dark:bg-[#1A1E24] relative">
+    
+    <!-- Sidebar Backdrop (Opens on touch/click, closes on backdrop click) -->
+    <div id="sidebarBackdrop" onclick="closeSidebar()" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 hidden opacity-0 transition-opacity duration-200"></div>
 
-<div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
-<aside class="drawer" id="drawer" aria-hidden="true">
-  <div class="drawer-head">
-    <h2>Forensic report</h2>
-    <button class="close" id="drawerClose">×</button>
+    <!-- Slide-Over Sidebar Navigation (Darker near-black slate #14171C) -->
+    <aside id="mainSidebar" class="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-white dark:bg-[#14171C] border-r border-slate-200 dark:border-[#2D3440] flex flex-col justify-between z-50 transform -translate-x-full transition-drawer overflow-y-auto">
+      
+      <div class="p-4 space-y-3.5">
+        <!-- Brand Header & Close Button -->
+        <div class="flex items-center justify-between px-3 py-2 rounded-md bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440]">
+          <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-md bg-white text-slate-900 flex items-center justify-center font-bold text-xs border border-slate-200 dark:border-[#2D3440]">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            </div>
+            <div class="leading-tight">
+              <div class="font-bold text-xs text-slate-900 dark:text-white tracking-tight">mailMeta</div>
+              <span class="text-[10px] text-slate-500 dark:text-[#8A94A6]">Forensics SOC</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-100 dark:bg-[#222730] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-[#2D3440] font-semibold whitespace-nowrap">v2.5</span>
+            <button onclick="closeSidebar()" class="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#222730] transition" title="Close Sidebar">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Search -->
+        <div class="relative">
+          <svg class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input id="sidebarSearchInput" type="text" placeholder="Search audits or IPs..." class="w-full bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] rounded-md pl-8 pr-7 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-[#8A94A6] focus:outline-none focus:ring-1 focus:ring-slate-400 focus:border-slate-400 transition">
+          <span class="absolute right-2.5 top-2 text-[10px] font-mono px-1 py-0.2 rounded bg-slate-200 dark:bg-[#222730] text-slate-600 dark:text-[#8A94A6]">/</span>
+        </div>
+
+        <!-- Live Gmail Featured Button -->
+        <div>
+          <button id="navLiveInboxFeatured" onclick="switchView('liveGmail')" class="w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-semibold bg-slate-100 dark:bg-[#222730] text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-[#2D3440] hover:bg-slate-200 dark:hover:bg-[#282F3B] transition group">
+            <div class="flex items-center gap-2.5">
+              <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+              <span class="whitespace-nowrap font-bold">Gmail Live Scanner</span>
+            </div>
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          </button>
+        </div>
+
+        <div class="h-px bg-slate-100 dark:border-[#2D3440] border-t border-slate-200 dark:border-[#2D3440] my-1"></div>
+
+        <!-- Primary Navigation (Clicking any tab immediately closes sidebar and opens view) -->
+        <nav class="space-y-1">
+          <button id="navTabDashboard" onclick="switchView('dashboard')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-semibold bg-slate-200/70 dark:bg-[#222730] text-slate-900 dark:text-white border border-slate-300 dark:border-[#2D3440] transition">
+            <svg class="w-4 h-4 text-white shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+            <span class="whitespace-nowrap font-bold">Dashboard</span>
+          </button>
+          
+          <button id="navTabLiveInbox" onclick="switchView('liveGmail')" class="w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium text-slate-600 dark:text-[#8A94A6] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#222730] border border-transparent hover:border-slate-200 dark:hover:border-[#2D3440] transition">
+            <div class="flex items-center gap-2.5">
+              <svg class="w-4 h-4 text-[#8A94A6] shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+              <span class="whitespace-nowrap">Live Inbox Checking</span>
+            </div>
+            <span class="px-1.5 py-0.2 rounded text-[9px] bg-slate-100 dark:bg-[#1A1E24] text-slate-700 dark:text-slate-300 font-semibold border border-slate-200 dark:border-[#2D3440] whitespace-nowrap">OAuth</span>
+          </button>
+
+          <button id="navTabAnalytics" onclick="switchView('threatIntel')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium text-slate-600 dark:text-[#8A94A6] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#222730] border border-transparent hover:border-slate-200 dark:hover:border-[#2D3440] transition">
+            <svg class="w-4 h-4 text-[#8A94A6] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            <span class="whitespace-nowrap">Threat Intel & Trends</span>
+          </button>
+
+          <button id="navTabIntegrations" onclick="switchView('integrations')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium text-slate-600 dark:text-[#8A94A6] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#222730] border border-transparent hover:border-slate-200 dark:hover:border-[#2D3440] transition">
+            <svg class="w-4 h-4 text-[#8A94A6] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/></svg>
+            <span class="whitespace-nowrap">Integrations & API</span>
+          </button>
+
+          <button id="navTabSettings" onclick="switchView('settings')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium text-slate-600 dark:text-[#8A94A6] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#222730] border border-transparent hover:border-slate-200 dark:hover:border-[#2D3440] transition">
+            <svg class="w-4 h-4 text-[#8A94A6] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <span class="whitespace-nowrap">SOC Settings</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Bottom User Profile & Sign Out -->
+      <div class="p-3 border-t border-slate-100 dark:border-[#2D3440]">
+        <div class="flex items-center justify-between gap-2 p-2 rounded-md bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440]">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div id="sidebarUserAvatar" class="w-7 h-7 rounded-md bg-white text-slate-900 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-200 dark:border-[#2D3440]">
+              A
+            </div>
+            <div class="min-w-0 leading-tight">
+              <div id="sidebarUserName" class="text-xs font-bold text-slate-900 dark:text-white truncate">Analyst</div>
+              <div id="sidebarUserRole" class="text-[10px] text-slate-500 dark:text-[#8A94A6] truncate">SOC Lead</div>
+            </div>
+          </div>
+          <button onclick="handleLogout()" class="p-1.5 rounded-md text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition shrink-0" title="Sign Out">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Header & Flow -->
+    <div class="grow flex flex-col min-w-0 w-full bg-slate-50 dark:bg-[#1A1E24]">
+      
+      <!-- Top Header Utility Bar -->
+      <header class="h-14 px-4 sm:px-6 border-b border-slate-200 dark:border-[#2D3440] flex items-center justify-between shrink-0 bg-white/95 dark:bg-[#14171C]/95 backdrop-blur-md sticky top-0 z-20 transition-colors">
+        
+        <!-- Left: Menu Drawer Trigger + Brand / Section Title -->
+        <div class="flex items-center gap-3 min-w-0">
+          
+          <!-- Touch/Click Sidebar Toggle Button -->
+          <button onclick="toggleSidebar()" class="p-1.5 sm:px-2.5 sm:py-1.5 rounded-md border border-slate-200 dark:border-[#2D3440] bg-white dark:bg-[#222730] hover:bg-slate-50 dark:hover:bg-[#282F3B] text-slate-700 dark:text-slate-200 transition flex items-center gap-2 group shrink-0" title="Open Navigation Menu">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            <span class="text-xs font-bold text-slate-800 dark:text-slate-100 hidden sm:inline">Menu</span>
+          </button>
+
+          <!-- Breadcrumb & Title -->
+          <div class="flex items-center gap-2 text-xs truncate">
+            <span class="font-bold text-slate-900 dark:text-white text-sm sm:text-base tracking-tight" id="breadcrumbSection">Dashboard</span>
+            <span class="text-slate-300 dark:text-[#2D3440] hidden sm:inline">•</span>
+            <span id="topGreeting" class="text-xs text-slate-500 dark:text-[#8A94A6] hidden md:inline truncate">Email Forensics & Live Threat Intelligence</span>
+          </div>
+        </div>
+
+        <!-- Top Header Actions & Nav Pills -->
+        <div class="flex items-center gap-2 shrink-0">
+          
+          <!-- Global Search -->
+          <div class="relative hidden lg:block">
+            <svg class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input id="headerSearchInput" type="text" placeholder="Search audit or IP..." class="bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] rounded-md pl-8 pr-3 py-1 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-[#8A94A6] focus:outline-none focus:ring-1 focus:ring-slate-400 w-44 xl:w-56 transition">
+          </div>
+
+          <!-- Theme Toggle Button -->
+          <button onclick="toggleTheme()" class="p-1.5 rounded-md border border-slate-200 dark:border-[#2D3440] bg-white dark:bg-[#222730] text-slate-600 dark:text-[#8A94A6] hover:text-white transition" title="Toggle Light/Dark Theme">
+            <svg id="themeIconHeader" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+          </button>
+
+          <!-- Export CSV Button (Hidden on very small screens) -->
+          <button onclick="exportAuditCSV()" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-[#2D3440] bg-white dark:bg-[#222730] hover:bg-slate-50 dark:hover:bg-[#282F3B] text-slate-700 dark:text-slate-200 text-xs font-semibold transition whitespace-nowrap">
+            <svg class="w-3.5 h-3.5 text-[#8A94A6]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            <span class="whitespace-nowrap">Export</span>
+          </button>
+
+          <!-- Phishing Simulation Trigger -->
+          <button onclick="triggerSimulate('anonymousemail')" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 text-xs font-semibold transition whitespace-nowrap">
+            <svg class="w-3.5 h-3.5 text-rose-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <span class="whitespace-nowrap hidden sm:inline">Simulate Threat</span>
+            <span class="sm:hidden">Simulate</span>
+          </button>
+
+          <!-- Upload EML Button (High contrast solid button) -->
+          <button onclick="openUploadModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold border border-slate-200 transition whitespace-nowrap">
+            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+            <span class="whitespace-nowrap">+ Upload EML</span>
+          </button>
+
+          <!-- Reset Button -->
+          <button onclick="resetDemoData()" class="p-1.5 rounded-md border border-slate-200 dark:border-[#2D3440] bg-white dark:bg-[#222730] hover:bg-slate-50 dark:hover:bg-[#282F3B] text-[#8A94A6] hover:text-rose-400 text-xs transition shrink-0" title="Reset State">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- ==================== VIEW: DASHBOARD ==================== -->
+      <main id="viewDashboard" class="grow p-4 sm:p-5 space-y-4 max-w-7xl mx-auto w-full">
+        
+        <!-- Metrics Row (Material Dark Cards) -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          
+          <!-- Card 1: Total Scanned -->
+          <div class="p-4 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] flex items-center justify-between">
+            <div class="space-y-0.5">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#8A94A6]">TOTAL SCANNED</span>
+              <div id="statTotalScanned" class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">0</div>
+              <div class="text-[11px] text-slate-600 dark:text-slate-300 font-semibold">↑ Real-Time Ingest</div>
+            </div>
+            <div class="w-9 h-9 rounded-md bg-slate-100 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] flex items-center justify-center text-slate-700 dark:text-slate-200">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </div>
+          </div>
+
+          <!-- Card 2: Safe & Authentic -->
+          <div class="p-4 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] flex items-center justify-between">
+            <div class="space-y-0.5">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#8A94A6]">AUTHENTIC PASS</span>
+              <div id="statSafeEmails" class="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">0</div>
+              <div class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">↑ SPF/DKIM/DMARC 100%</div>
+            </div>
+            <div class="w-9 h-9 rounded-md bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200 dark:border-emerald-500/20">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            </div>
+          </div>
+
+          <!-- Card 3: Phishing Attacks -->
+          <div class="p-4 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] flex items-center justify-between">
+            <div class="space-y-0.5">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#8A94A6]">PHISHING ATTACKS</span>
+              <div id="statHighRisk" class="text-2xl font-black text-rose-600 dark:text-rose-400 tracking-tight">0</div>
+              <div class="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">↓ High Threat Spoof</div>
+            </div>
+            <div class="w-9 h-9 rounded-md bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-200 dark:border-rose-500/20">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            </div>
+          </div>
+
+          <!-- Card 4: Flagged / Suspicious -->
+          <div class="p-4 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] flex items-center justify-between">
+            <div class="space-y-0.5">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#8A94A6]">FLAGGED / REVIEW</span>
+              <div id="statPendingReviews" class="text-2xl font-black text-amber-500 dark:text-amber-400 tracking-tight">0</div>
+              <div class="text-[11px] text-amber-500 dark:text-amber-400 font-semibold">~ Anomalous Relays</div>
+            </div>
+            <div class="w-9 h-9 rounded-md bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-200 dark:border-amber-500/20">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- Middle Grid: Received Today Breakdown & Recent Audits -->
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          
+          <!-- Messages Received Today: Real vs Scams Pie Chart (7 cols) -->
+          <div class="lg:col-span-7 p-4 sm:p-5 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] flex flex-col justify-between space-y-3.5">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="space-y-0.5">
+                <h3 class="text-sm font-bold text-slate-900 dark:text-white tracking-tight">Messages Received Today: Real vs. Scams</h3>
+                <p class="text-xs text-slate-500 dark:text-[#8A94A6]">Real-time classification breakdown of monitored inbox traffic</p>
+              </div>
+              <div class="flex items-center gap-1 p-0.5 rounded-md bg-slate-100 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] text-[11px]">
+                <span class="px-2 py-0.5 rounded bg-white dark:bg-[#222730] text-slate-900 dark:text-white font-bold border border-slate-200 dark:border-[#2D3440]">Today</span>
+                <span class="px-2 py-0.5 text-slate-500 dark:text-[#8A94A6]">All-Time</span>
+              </div>
+            </div>
+
+            <!-- Interactive Pie / Donut Visualization -->
+            <div class="flex flex-col sm:flex-row items-center justify-around gap-5 py-1">
+              <div class="relative w-40 h-40 shrink-0 flex items-center justify-center">
+                <svg id="pieChartSvg" class="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" stroke-width="14" class="text-slate-100 dark:text-[#1A1E24]"/>
+                  <circle id="pieSegmentReal" cx="50" cy="50" r="38" fill="none" stroke="#10b981" stroke-width="14" stroke-dasharray="0 238.76" stroke-dashoffset="0" class="transition-all duration-700 ease-out"/>
+                  <circle id="pieSegmentScams" cx="50" cy="50" r="38" fill="none" stroke="#f43f5e" stroke-width="14" stroke-dasharray="0 238.76" stroke-dashoffset="0" class="transition-all duration-700 ease-out"/>
+                  <circle id="pieSegmentSuspicious" cx="50" cy="50" r="38" fill="none" stroke="#f59e0b" stroke-width="14" stroke-dasharray="0 238.76" stroke-dashoffset="0" class="transition-all duration-700 ease-out"/>
+                </svg>
+                <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                  <span id="pieCenterTotal" class="text-2xl font-black text-slate-900 dark:text-white leading-none">0</span>
+                  <span class="text-[10px] uppercase font-bold text-slate-400 dark:text-[#8A94A6] mt-1">Received Today</span>
+                </div>
+              </div>
+
+              <!-- Pie Chart Legend & Metrics Breakdown -->
+              <div class="space-y-2 w-full sm:w-auto grow max-w-xs">
+                <div class="p-2 rounded-md bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-sm bg-emerald-500 shrink-0"></span>
+                    <div>
+                      <div class="text-xs font-bold text-slate-800 dark:text-slate-200">Real (Authentic)</div>
+                      <div class="text-[10px] text-[#8A94A6]">Passed SPF/DKIM/DMARC</div>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <span id="pieRealCount" class="text-xs font-bold text-emerald-600 dark:text-emerald-400">0</span>
+                    <span id="pieRealPct" class="text-[11px] text-[#8A94A6] font-mono ml-1">(0%)</span>
+                  </div>
+                </div>
+
+                <div class="p-2 rounded-md bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-sm bg-rose-500 shrink-0"></span>
+                    <div>
+                      <div class="text-xs font-bold text-slate-800 dark:text-slate-200">Scams (Phishing)</div>
+                      <div class="text-[10px] text-[#8A94A6]">Spoofs, Anonymous relays</div>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <span id="pieScamCount" class="text-xs font-bold text-rose-600 dark:text-rose-400">0</span>
+                    <span id="pieScamPct" class="text-[11px] text-[#8A94A6] font-mono ml-1">(0%)</span>
+                  </div>
+                </div>
+
+                <div class="p-2 rounded-md bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-sm bg-amber-500 shrink-0"></span>
+                    <div>
+                      <div class="text-xs font-bold text-slate-800 dark:text-slate-200">Suspicious</div>
+                      <div class="text-[10px] text-[#8A94A6]">Unverified / softfail</div>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <span id="pieSuspiciousCount" class="text-xs font-bold text-amber-500">0</span>
+                    <span id="pieSuspiciousPct" class="text-[11px] text-[#8A94A6] font-mono ml-1">(0%)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-[#2D3440] text-xs text-slate-500 dark:text-[#8A94A6]">
+              <span class="text-[11px]">Real-time SOC telemetry</span>
+              <span class="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Automated AI Detection</span>
+            </div>
+          </div>
+
+          <!-- Recent Audits List (5 cols) -->
+          <div class="lg:col-span-5 p-4 sm:p-5 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] flex flex-col justify-between space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white tracking-tight">Recent Ingested Audits</h3>
+              <button onclick="fetchAllEmails()" class="text-xs text-slate-600 dark:text-slate-300 hover:text-white font-bold whitespace-nowrap">Refresh</button>
+            </div>
+
+            <div class="grid grid-cols-12 text-[10px] font-bold text-slate-400 dark:text-[#8A94A6] pb-1 border-b border-slate-100 dark:border-[#2D3440]">
+              <div class="col-span-7 uppercase tracking-wider">Audit Subject</div>
+              <div class="col-span-5 text-right uppercase tracking-wider">Verdict</div>
+            </div>
+
+            <div id="recentAuditsList" class="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+              <div class="p-3 text-center text-xs text-[#8A94A6]">Loading audits...</div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-100 dark:border-[#2D3440] text-xs text-slate-500 flex items-center justify-between">
+              <span class="text-[11px] text-[#8A94A6]">Live RFC822 parser active</span>
+              <button onclick="openUploadModal()" class="text-white font-bold hover:underline">+ New Scan</button>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- Threat Dossiers & Preset Scenarios -->
+        <section class="space-y-3 pt-1">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white tracking-tight">Forensic Threat Dossiers</h3>
+              <p class="text-xs text-slate-500 dark:text-[#8A94A6]">Pre-configured forensic scenarios, disposable remailer attacks, and brand impersonation</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5" id="dossierCardsGrid">
+            
+            <!-- Dossier 1: AnonymousEmail Attack (SPF/DKIM/DMARC FAIL) -->
+            <div class="p-4 rounded-lg bg-white dark:bg-[#222730] border border-rose-200 dark:border-rose-500/30 flex flex-col justify-between space-y-2.5">
+              <div class="flex items-start justify-between">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 uppercase tracking-wide whitespace-nowrap">🚨 FAIL</span>
+                <span class="text-xs font-bold text-rose-600 dark:text-rose-400 font-mono">92+ Risk</span>
+              </div>
+              <div class="space-y-1">
+                <h4 class="text-xs font-bold text-slate-900 dark:text-white truncate">AnonymousEmail Phish Attack</h4>
+                <p class="text-[11px] text-slate-500 dark:text-[#8A94A6] leading-relaxed">Disposable remailer identity failing SPF, DKIM, and strict DMARC alignment.</p>
+              </div>
+              <div class="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-[#2D3440]">
+                <button onclick="triggerSimulate('anonymousemail')" class="grow px-2.5 py-1.5 rounded-md bg-slate-100 dark:bg-[#1A1E24] hover:bg-slate-200 dark:hover:bg-[#282F3B] text-slate-800 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-[#2D3440] transition whitespace-nowrap">
+                  Inspect & Test
+                </button>
+              </div>
+            </div>
+
+            <!-- Dossier 2: CEO Wire Transfer -->
+            <div class="p-4 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] flex flex-col justify-between space-y-2.5">
+              <div class="flex items-start justify-between">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 uppercase tracking-wide whitespace-nowrap">BEC Spoof</span>
+                <span class="text-xs font-bold text-rose-600 dark:text-rose-400 font-mono">85 Risk</span>
+              </div>
+              <div class="space-y-1">
+                <h4 class="text-xs font-bold text-slate-900 dark:text-white truncate">CEO Wire Impersonation</h4>
+                <p class="text-[11px] text-slate-500 dark:text-[#8A94A6] leading-relaxed">Executive identity spoofing with hard SPF failure and mismatched reply-to headers.</p>
+              </div>
+              <div class="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-[#2D3440]">
+                <button onclick="triggerSimulate('ceo_wire')" class="grow px-2.5 py-1.5 rounded-md bg-slate-100 dark:bg-[#1A1E24] hover:bg-slate-200 dark:hover:bg-[#282F3B] text-slate-800 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-[#2D3440] transition whitespace-nowrap">
+                  Inspect & Test
+                </button>
+              </div>
+            </div>
+
+            <!-- Dossier 3: PayPal Credential Harvest -->
+            <div class="p-4 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] flex flex-col justify-between space-y-2.5">
+              <div class="flex items-start justify-between">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30 uppercase tracking-wide whitespace-nowrap">Phishing Link</span>
+                <span class="text-xs font-bold text-amber-600 dark:text-amber-400 font-mono">78 Risk</span>
+              </div>
+              <div class="space-y-1">
+                <h4 class="text-xs font-bold text-slate-900 dark:text-white truncate">PayPal Account Limit Spoof</h4>
+                <p class="text-[11px] text-slate-500 dark:text-[#8A94A6] leading-relaxed">Unverified VPS origin directing users to a credential-harvesting landing page.</p>
+              </div>
+              <div class="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-[#2D3440]">
+                <button onclick="triggerSimulate('paypal_fake')" class="grow px-2.5 py-1.5 rounded-md bg-slate-100 dark:bg-[#1A1E24] hover:bg-slate-200 dark:hover:bg-[#282F3B] text-slate-800 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-[#2D3440] transition whitespace-nowrap">
+                  Inspect & Test
+                </button>
+              </div>
+            </div>
+
+            <!-- Dossier 4: Google Workspace MFA (Authentic) -->
+            <div class="p-4 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] flex flex-col justify-between space-y-2.5">
+              <div class="flex items-start justify-between">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 uppercase tracking-wide whitespace-nowrap">Authentic</span>
+                <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono">0 Risk</span>
+              </div>
+              <div class="space-y-1">
+                <h4 class="text-xs font-bold text-slate-900 dark:text-white truncate">Google Workspace Notice</h4>
+                <p class="text-[11px] text-slate-500 dark:text-[#8A94A6] leading-relaxed">Cryptographically signed message passing SPF, DKIM (d=google.com), and DMARC.</p>
+              </div>
+              <div class="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-[#2D3440]">
+                <button onclick="selectEmail(2)" class="grow px-2.5 py-1.5 rounded-md bg-slate-100 dark:bg-[#1A1E24] hover:bg-slate-200 dark:hover:bg-[#282F3B] text-slate-800 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-[#2D3440] transition whitespace-nowrap">
+                  Inspect & Test
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </main>
+
+      <!-- ==================== VIEW: GMAIL LIVE SCANNER ==================== -->
+      <main id="viewLiveGmail" class="grow p-4 sm:p-5 space-y-4 max-w-7xl mx-auto w-full hidden">
+        
+        <!-- Live Workspace Header Card -->
+        <div class="p-4 sm:p-5 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] flex flex-col md:flex-row md:items-center justify-between gap-3.5">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-md bg-white text-slate-900 flex items-center justify-center border border-slate-200 dark:border-[#2D3440] shrink-0">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+            </div>
+            <div class="space-y-0.5">
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-slate-900 dark:text-white tracking-tight">Gmail Live Inbox Security Scanner</h3>
+                <span id="gmailConnectionBadge" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-[#1A1E24] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#2D3440] whitespace-nowrap">Ready</span>
+              </div>
+              <p class="text-xs text-slate-500 dark:text-[#8A94A6]">Direct read-only Google OAuth integration to verify SPF, DKIM, and DMARC across received mail.</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 shrink-0 flex-wrap">
+            <button id="gmailConnectBtn" onclick="handleGoogleSignIn()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold border border-slate-200 transition whitespace-nowrap">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+              <span id="gmailConnectBtnText">Connect Gmail Account</span>
+            </button>
+            <button onclick="loadSampleLiveFeed()" class="px-3 py-1.5 rounded-md border border-slate-200 dark:border-[#2D3440] bg-white dark:bg-[#1A1E24] hover:bg-slate-50 dark:hover:bg-[#282F3B] text-slate-700 dark:text-slate-200 text-xs font-semibold transition whitespace-nowrap">
+              Preview Demo Feed
+            </button>
+          </div>
+        </div>
+
+        <!-- Controls & Filter Bar -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button onclick="setGmailFilter('inbox')" id="filterGmailInbox" class="px-3 py-1.5 rounded-md text-xs font-semibold bg-white dark:bg-[#222730] text-slate-900 dark:text-white border border-slate-300 dark:border-[#2D3440] whitespace-nowrap">
+              Inbox Feed
+            </button>
+            <button onclick="setGmailFilter('unread')" id="filterGmailUnread" class="px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 dark:text-[#8A94A6] hover:text-slate-900 dark:hover:text-white bg-white dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] whitespace-nowrap">
+              Unread
+            </button>
+            <button onclick="setGmailFilter('suspicious')" id="filterGmailSuspicious" class="px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 dark:text-[#8A94A6] hover:text-slate-900 dark:hover:text-white bg-white dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] whitespace-nowrap">
+              Flagged Only
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="fetchLiveGmailMessages()" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-[#2D3440] bg-white dark:bg-[#222730] hover:bg-slate-50 dark:hover:bg-[#282F3B] text-slate-700 dark:text-slate-200 text-xs font-semibold transition whitespace-nowrap">
+              <svg id="iconRefreshSpinner" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              <span>Refresh Mail</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Gmail Live Cards Stream -->
+        <div class="space-y-2.5" id="gmailMessagesContainer">
+          <div class="p-6 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] text-center text-xs text-[#8A94A6]">
+            Click "Connect Gmail Account" or "Preview Demo Feed" to inspect incoming messages.
+          </div>
+        </div>
+
+        <!-- Activity Console -->
+        <div class="p-4 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] space-y-2">
+          <div class="flex items-center justify-between text-xs font-bold text-slate-900 dark:text-white">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>Forensic Activity Console</span>
+            </div>
+            <button onclick="clearConsoleLog()" class="text-[11px] font-normal text-[#8A94A6] hover:text-white">Clear</button>
+          </div>
+          <div id="liveActivityLog" class="p-3 rounded-md bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] text-[11px] font-mono text-slate-600 dark:text-slate-300 max-h-32 overflow-y-auto space-y-1">
+            <div>[SYSTEM] Forensic Engine initialized. Ready for incoming headers.</div>
+          </div>
+        </div>
+
+      </main>
+
+      <!-- ==================== VIEW: THREAT INTEL ==================== -->
+      <main id="viewThreatIntel" class="grow p-4 sm:p-5 space-y-4 max-w-7xl mx-auto w-full hidden">
+        <div class="p-4 sm:p-5 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] space-y-4">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white">Threat Intelligence & Protocol Anomaly Analytics</h3>
+            <p class="text-xs text-slate-500 dark:text-[#8A94A6]">Continuous telemetry across monitored mailboxes, spoof vectors, and MTA routing hops.</p>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
+            <div class="p-3.5 rounded-md bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] space-y-1">
+              <div class="text-xs font-semibold text-slate-500 dark:text-[#8A94A6]">Top Impersonated Brand</div>
+              <div class="text-xl font-bold text-rose-600 dark:text-rose-400">Microsoft / O365</div>
+              <p class="text-[11px] text-[#8A94A6]">42% of observed spoof attempts</p>
+            </div>
+            <div class="p-3.5 rounded-md bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] space-y-1">
+              <div class="text-xs font-semibold text-slate-500 dark:text-[#8A94A6]">Primary Attack Vector</div>
+              <div class="text-xl font-bold text-amber-500">Anonymous Disposable Relays</div>
+              <p class="text-[11px] text-[#8A94A6]">Failed SPF/DKIM/DMARC alignment</p>
+            </div>
+            <div class="p-3.5 rounded-md bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] space-y-1">
+              <div class="text-xs font-semibold text-slate-500 dark:text-[#8A94A6]">Avg Analysis Time</div>
+              <div class="text-xl font-bold text-white">14.2 ms</div>
+              <p class="text-[11px] text-[#8A94A6]">In-memory header pipeline</p>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- ==================== VIEW: INTEGRATIONS ==================== -->
+      <main id="viewIntegrations" class="grow p-4 sm:p-5 space-y-4 max-w-7xl mx-auto w-full hidden">
+        
+        <!-- Google Gemini AI Security & Read Note Integration Card -->
+        <div class="p-4 sm:p-5 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-[#2D3440] pb-3">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-md bg-white text-slate-900 flex items-center justify-center font-bold border border-slate-200 dark:border-[#2D3440]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="text-sm font-bold text-slate-900 dark:text-white">Google Gemini AI Engine</h3>
+                  <span id="geminiStatusBadge" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap">Active (Gemini 3.7 Flash)</span>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-[#8A94A6]">Generates instant, intuitive Read Notes for received emails, safety verdicts, key element extractions, and actionable suggestions.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-3.5">
+            <div class="lg:col-span-2 space-y-2.5">
+              <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Gemini API Key
+              </label>
+              <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <div class="relative grow">
+                  <input id="geminiApiKeyInput" type="password" placeholder="Enter Gemini API Key (e.g. AIzaSy...)" class="w-full bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] rounded-md px-3 py-1.5 text-xs font-mono text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-[#8A94A6] focus:outline-none focus:ring-1 focus:ring-slate-400 transition">
+                  <button type="button" onclick="toggleGeminiKeyVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs">
+                    👁️
+                  </button>
+                </div>
+                <button onclick="saveGeminiApiKey()" class="px-3.5 py-1.5 rounded-md bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold border border-slate-200 transition whitespace-nowrap">
+                  Save API Key
+                </button>
+                <button onclick="testGeminiConnection()" class="px-3.5 py-1.5 rounded-md bg-slate-100 dark:bg-[#1A1E24] hover:bg-slate-200 dark:hover:bg-[#282F3B] text-slate-800 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-[#2D3440] transition whitespace-nowrap flex items-center justify-center gap-1.5">
+                  <span>⚡ Test AI</span>
+                </button>
+              </div>
+              <p class="text-[11px] text-[#8A94A6]">The Gemini API Key is utilized securely on the server with Gemini 3.7 Flash to analyze incoming inbox emails and generate human-readable security briefings.</p>
+              
+              <div id="geminiTestOutputBox" class="hidden p-3 rounded-md bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] space-y-1.5 text-xs">
+                <div class="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                  <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span> Gemini AI Test Verification:</span>
+                  <span id="geminiTestModelName" class="font-mono text-white text-[10px]">gemini-3.7-flash</span>
+                </div>
+                <p id="geminiTestResultText" class="text-slate-600 dark:text-slate-300 leading-relaxed font-sans"></p>
+              </div>
+            </div>
+
+            <div class="p-3.5 rounded-md bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] space-y-2 text-xs">
+              <span class="font-bold text-slate-900 dark:text-white uppercase tracking-wider text-[10px]">AI Feature Capabilities</span>
+              <ul class="space-y-1.5 text-slate-600 dark:text-slate-300 text-[11px]">
+                <li class="flex items-start gap-2">
+                  <span class="text-emerald-400 font-bold">✓</span>
+                  <span><strong>Simple Read Note:</strong> Clear synopsis of message purpose and content.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-emerald-400 font-bold">✓</span>
+                  <span><strong>Safety Verdict:</strong> Determines whether the email is safe, suspicious, or dangerous.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-emerald-400 font-bold">✓</span>
+                  <span><strong>Automatic Suggestions:</strong> Actionable guidance for the recipient or SOC team.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-4 sm:p-5 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] space-y-3.5">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white">Security Gateways & Forwarding Integrations</h3>
+            <p class="text-xs text-slate-500 dark:text-[#8A94A6]">Connect cloud mailboxes, webhook forwarders, and SIEM ingestion pipelines.</p>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <div class="p-4 rounded-md bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] space-y-2.5">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-xs text-slate-900 dark:text-white">Google Workspace / Gmail</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 whitespace-nowrap">Active</span>
+              </div>
+              <p class="text-xs text-slate-500 dark:text-[#8A94A6]">Real-time OAuth 2.0 scanning for incoming mailbox and spam quarantined items with Gemini AI suggestions.</p>
+              <button onclick="switchView('liveGmail')" class="w-full px-3 py-1.5 rounded-md bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold border border-slate-200">Open Live Workspace</button>
+            </div>
+            <div class="p-4 rounded-md bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] space-y-2.5">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-xs text-slate-900 dark:text-white">SIEM CSV / CEF Export</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-[#222730] text-slate-600 dark:text-[#8A94A6] whitespace-nowrap">Ready</span>
+              </div>
+              <p class="text-xs text-slate-500 dark:text-[#8A94A6]">Download formatted forensic logs for Splunk, Microsoft Sentinel, and Elastic.</p>
+              <button onclick="exportAuditCSV()" class="w-full px-3 py-1.5 rounded-md border border-slate-200 dark:border-[#2D3440] text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-[#282F3B]">Export All Records</button>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- ==================== VIEW: SETTINGS ==================== -->
+      <main id="viewSettings" class="grow p-4 sm:p-5 space-y-4 max-w-7xl mx-auto w-full hidden">
+        <div class="p-4 sm:p-5 rounded-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] space-y-4">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white">SOC Forensic Engine Configuration</h3>
+            <p class="text-xs text-slate-500 dark:text-[#8A94A6]">Inspection threshold rules, DNS policy, and database controls.</p>
+          </div>
+          <div class="space-y-2 text-xs">
+            <div class="flex items-center justify-between p-3 rounded-md bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440]">
+              <span class="text-slate-600 dark:text-[#8A94A6]">Anonymous Email Remailer Policy:</span>
+              <span class="font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap">Strict Enforce (SPF/DKIM/DMARC FAIL)</span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-md bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440]">
+              <span class="text-slate-600 dark:text-[#8A94A6]">DNS Resolution Timeout:</span>
+              <span class="font-mono text-slate-900 dark:text-white">2500 ms</span>
+            </div>
+          </div>
+          <div class="pt-2.5 border-t border-slate-100 dark:border-[#2D3440] flex items-center justify-between flex-wrap gap-2">
+            <span class="text-xs text-slate-500 dark:text-[#8A94A6]">Wipe user state and restore pristine database:</span>
+            <button onclick="resetDemoData()" class="px-3.5 py-1.5 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 text-xs font-semibold transition whitespace-nowrap">
+              Reset to Factory State
+            </button>
+          </div>
+        </div>
+      </main>
+
+    </div>
   </div>
-  <div class="drawer-body" id="drawerBody"></div>
-</aside>
 
-<script src="/static/app.js"></script>
+  <!-- ==================== 3. FORENSIC INSPECTOR DRAWER ==================== -->
+  <div id="inspectorModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-end hidden opacity-0 transition-opacity duration-200">
+    <div id="inspectorDrawer" class="w-full max-w-2xl bg-white dark:bg-[#14171C] border-l border-slate-200 dark:border-[#2D3440] h-full flex flex-col justify-between transform translate-x-full transition-transform duration-300 overflow-y-auto">
+      
+      <!-- Drawer Header -->
+      <div class="p-4 sm:p-5 border-b border-slate-200 dark:border-[#2D3440] flex items-center justify-between sticky top-0 bg-white/95 dark:bg-[#14171C]/95 backdrop-blur z-10">
+        <div class="space-y-0.5 pr-4">
+          <div class="flex items-center gap-2">
+            <span id="drawerRiskBadge" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 whitespace-nowrap">
+              🚨 HIGH RISK / PHISHING ATTACK
+            </span>
+            <span id="drawerDate" class="text-xs font-mono text-[#8A94A6] whitespace-nowrap">Just now</span>
+          </div>
+          <h3 id="drawerSubject" class="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight break-words">Email Subject Inspection</h3>
+        </div>
+        <button onclick="closeInspector()" class="w-7 h-7 rounded-md border border-slate-200 dark:border-[#2D3440] bg-slate-50 dark:bg-[#1A1E24] text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition">
+          &times;
+        </button>
+      </div>
+
+      <!-- Drawer Body -->
+      <div class="p-4 sm:p-5 space-y-4">
+        
+        <!-- Threat Score & Origin IP -->
+        <div class="p-4 rounded-lg bg-slate-50 dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] flex items-center justify-between">
+          <div class="space-y-0.5">
+            <span class="text-xs font-semibold text-slate-500 dark:text-[#8A94A6]">Forensic Threat Score</span>
+            <div class="flex items-baseline gap-2">
+              <span id="drawerScoreVal" class="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400">92</span>
+              <span class="text-xs text-[#8A94A6]">/ 100 risk</span>
+            </div>
+          </div>
+          <div class="text-right space-y-0.5">
+            <span class="text-xs font-semibold text-slate-500 dark:text-[#8A94A6]">Origin MTA IP:</span>
+            <div id="drawerOriginIP" class="font-mono text-xs font-bold text-white">185.107.56.22</div>
+          </div>
+        </div>
+
+        <!-- Google Gemini AI Read Note & Safety Assessment Box -->
+        <div id="drawerAiNoteCard" class="p-4 rounded-lg bg-slate-50 dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-5 h-5 rounded bg-slate-200 dark:bg-[#1A1E24] text-slate-800 dark:text-slate-100 flex items-center justify-center font-bold text-xs border border-slate-200 dark:border-[#2D3440]">
+                ✨
+              </div>
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">Gemini AI Simple Read Note</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="drawerAiSafetyBadge" class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap">
+                🛡️ Safe to Read
+              </span>
+              <button id="drawerAiRefreshBtn" onclick="refreshCurrentEmailAiNote()" title="Re-run Gemini AI Analysis" class="p-1 rounded hover:bg-slate-200 dark:hover:bg-[#1A1E24] text-[#8A94A6] hover:text-white text-xs transition">
+                🔄
+              </button>
+            </div>
+          </div>
+
+          <!-- Read Note synopsis -->
+          <div class="space-y-1">
+            <div class="text-[10px] font-bold text-slate-500 dark:text-[#8A94A6] uppercase tracking-wider">Executive Synopsis:</div>
+            <p id="drawerAiReadNote" class="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-sans font-medium bg-white dark:bg-[#1A1E24] p-2.5 rounded-md border border-slate-200 dark:border-[#2D3440]">
+              Loading Gemini AI summary...
+            </p>
+          </div>
+
+          <!-- Key Elements / Extracted Items -->
+          <div id="drawerAiKeyElementsWrapper" class="space-y-1">
+            <div class="text-[10px] font-bold text-slate-500 dark:text-[#8A94A6] uppercase tracking-wider">Key Elements Detected:</div>
+            <div id="drawerAiKeyElementsList" class="flex flex-wrap gap-1.5 text-[11px]">
+              <!-- Dynamic Chips -->
+            </div>
+          </div>
+
+          <!-- AI Threat Reasoning -->
+          <div id="drawerAiThreatWrapper" class="space-y-1">
+            <div class="text-[10px] font-bold text-slate-500 dark:text-[#8A94A6] uppercase tracking-wider">Safety & Risk Reasoning:</div>
+            <p id="drawerAiThreatReasoning" class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              Evaluating safety status...
+            </p>
+          </div>
+
+          <!-- Action Suggestions -->
+          <div id="drawerAiSuggestionsWrapper" class="space-y-1 pt-1.5 border-t border-slate-200 dark:border-[#2D3440]">
+            <div class="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+              <span>💡</span>
+              <span>Recommended Action:</span>
+            </div>
+            <ul id="drawerAiSuggestionsList" class="space-y-1 text-xs text-slate-600 dark:text-slate-300 list-disc list-inside">
+              <!-- Dynamic suggestions -->
+            </ul>
+          </div>
+        </div>
+
+        <!-- Sender / Receiver Info -->
+        <div class="p-3.5 rounded-md bg-slate-50 dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] space-y-1.5 text-xs font-mono">
+          <div class="flex justify-between py-0.5 border-b border-slate-200/60 dark:border-[#2D3440]">
+            <span class="text-slate-500 dark:text-[#8A94A6]">From:</span>
+            <span id="drawerFrom" class="text-slate-900 dark:text-white font-semibold break-all text-right">sender@domain.com</span>
+          </div>
+          <div class="flex justify-between py-0.5 border-b border-slate-200/60 dark:border-[#2D3440]">
+            <span class="text-slate-500 dark:text-[#8A94A6]">Return-Path:</span>
+            <span id="drawerReturnPath" class="text-slate-700 dark:text-slate-300 break-all text-right">bounce@domain.com</span>
+          </div>
+          <div class="flex justify-between py-0.5">
+            <span class="text-slate-500 dark:text-[#8A94A6]">Reply-To:</span>
+            <span id="drawerReplyTo" class="text-slate-700 dark:text-slate-300 break-all text-right">inbox@external.com</span>
+          </div>
+        </div>
+
+        <!-- Heuristic Findings -->
+        <div class="space-y-1.5">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#8A94A6]">Forensic Findings</span>
+          <ul id="drawerFindingsList" class="space-y-1 text-xs bg-slate-50 dark:bg-[#222730] p-3 rounded-md border border-slate-200 dark:border-[#2D3440]">
+            <!-- Dynamic findings -->
+          </ul>
+        </div>
+
+        <!-- SPF / DKIM / DMARC Matrix -->
+        <div class="space-y-1.5">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#8A94A6]">Authentication Protocol Matrix</span>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            
+            <div class="p-3 rounded-md bg-slate-50 dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] space-y-0.5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-900 dark:text-white">SPF</span>
+                <span id="drawerSpfBadge" class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 whitespace-nowrap">FAIL</span>
+              </div>
+              <p id="drawerSpfExpl" class="text-[10px] text-slate-500 dark:text-[#8A94A6] leading-snug">SPF evaluation completed.</p>
+            </div>
+
+            <div class="p-3 rounded-md bg-slate-50 dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] space-y-0.5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-900 dark:text-white">DKIM</span>
+                <span id="drawerDkimBadge" class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 whitespace-nowrap">FAIL</span>
+              </div>
+              <p id="drawerDkimExpl" class="text-[10px] text-slate-500 dark:text-[#8A94A6] leading-snug">Cryptographic signature verification.</p>
+            </div>
+
+            <div class="p-3 rounded-md bg-slate-50 dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] space-y-0.5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-900 dark:text-white">DMARC</span>
+                <span id="drawerDmarcBadge" class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 whitespace-nowrap">FAIL</span>
+              </div>
+              <p id="drawerDmarcExpl" class="text-[10px] text-slate-500 dark:text-[#8A94A6] leading-snug">DMARC policy alignment check.</p>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Raw RFC822 Source View -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#8A94A6]">Raw RFC822 Headers</span>
+            <button onclick="copyRawEmail()" class="text-xs text-white hover:underline font-semibold">Copy Headers</button>
+          </div>
+          <pre id="drawerRawSource" class="p-3 rounded-md bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] text-[10px] font-mono text-slate-700 dark:text-slate-300 overflow-x-auto max-h-48 whitespace-pre-wrap select-text"></pre>
+        </div>
+
+      </div>
+
+      <!-- Drawer Footer -->
+      <div class="p-4 sm:p-5 border-t border-slate-200 dark:border-[#2D3440] bg-white dark:bg-[#14171C] flex items-center justify-between">
+        <button onclick="deleteCurrentAudit()" class="px-3 py-1.5 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold border border-rose-200 dark:border-rose-500/30 transition whitespace-nowrap">
+          Delete Record
+        </button>
+        <button onclick="closeInspector()" class="px-4 py-1.5 rounded-md bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold border border-slate-200 transition whitespace-nowrap">
+          Close Inspector
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== 4. EML UPLOAD MODAL ==================== -->
+  <div id="uploadModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-200">
+    <div class="w-full max-w-lg bg-white dark:bg-[#222730] border border-slate-200 dark:border-[#2D3440] rounded-lg p-5 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 dark:border-[#2D3440] pb-2.5">
+        <h3 class="text-sm font-bold text-slate-900 dark:text-white">Upload & Analyze Raw Email (.EML / RFC822)</h3>
+        <button onclick="closeUploadModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-xl">&times;</button>
+      </div>
+
+      <div id="dropZone" class="border-2 border-dashed border-slate-300 dark:border-[#2D3440] hover:border-slate-400 rounded-md p-5 text-center cursor-pointer transition space-y-1.5 bg-slate-50 dark:bg-[#1A1E24]">
+        <svg class="w-7 h-7 text-[#8A94A6] mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+        <div class="text-xs font-medium text-slate-700 dark:text-slate-300">Drag & drop your .eml file here</div>
+        <p class="text-[11px] text-[#8A94A6]">or click to browse local files</p>
+        <input type="file" id="fileInput" class="hidden" accept=".eml,.txt">
+      </div>
+
+      <div class="space-y-1">
+        <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">Or paste raw RFC822 headers:</label>
+        <textarea id="rawTextInput" rows="4" placeholder="From: sender@domain.com&#10;To: recipient@domain.com&#10;Subject: Invoice..." class="w-full bg-slate-50 dark:bg-[#1A1E24] border border-slate-200 dark:border-[#2D3440] rounded-md p-2.5 text-xs font-mono text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-[#8A94A6] focus:outline-none focus:ring-1 focus:ring-slate-400"></textarea>
+      </div>
+
+      <div class="flex items-center justify-end gap-2.5 pt-1">
+        <button onclick="closeUploadModal()" class="px-3.5 py-1.5 rounded-md border border-slate-200 dark:border-[#2D3440] text-slate-700 dark:text-slate-300 text-xs font-medium whitespace-nowrap hover:bg-slate-100 dark:hover:bg-[#1A1E24]">Cancel</button>
+        <button id="btnSubmitAnalyze" class="px-4 py-1.5 rounded-md bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold border border-slate-200 transition whitespace-nowrap">Analyze Now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Logic -->
+  <script src="/static/app.js"></script>
 </body>
 </html>
