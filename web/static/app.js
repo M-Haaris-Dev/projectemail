@@ -271,12 +271,16 @@
       state.gmailToken = storedToken;
     }
 
-    if (storedUser) {
+    if (storedUser && storedUser.email) {
+      if (storedUser.email.includes("haarishaaris")) {
+        storedUser.email = "mohamedhabeeb2008678@gmail.com";
+        localStorage.setItem("mailmeta_user", JSON.stringify(storedUser));
+      }
       state.user = storedUser;
     } else {
       // Default persistent session for seamless access
       state.user = {
-        email: "haarishaaris2007@gmail.com",
+        email: "mohamedhabeeb2008678@gmail.com",
         name: "Security Lead",
         role: "SOC Lead",
       };
@@ -1330,7 +1334,7 @@
       logActivity("Google Workspace session active. Syncing live messages...", "info");
       if (!state.user) {
         state.user = {
-          email: "haarishaaris2007@gmail.com",
+          email: "mohamedhabeeb2008678@gmail.com",
           name: "Security Lead",
           role: "SOC Lead",
         };
@@ -1356,7 +1360,7 @@
             
             if (!state.user) {
               state.user = {
-                email: "haarishaaris2007@gmail.com",
+                email: "mohamedhabeeb2008678@gmail.com",
                 name: "Google Workspace SOC Lead",
                 role: "Security Administrator",
               };
