@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mailMeta — Email Forensics</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">mailMeta</span>
+    <span class="tagline">Email Header Forensics · SPF / DKIM / DMARC</span>
+  </div>
+  <div class="topbar-right">
+    <div class="monitor-status">
+      <span class="dot" id="monitorDot"></span>
+      <span id="monitorText">checking…</span>
+    </div>
+    <button class="btn ghost" id="refreshBtn">Refresh</button>
+  </div>
+</header>
+
+<main class="container">
+
+  <section class="hero">
+    <h1>Email Analysis Dashboard</h1>
+    <p>mailMeta connects to a mailbox over IMAP, analyses every incoming message, and verifies the sender using live DNS records. Each email is scored 0–100 and labelled <strong>Safe · Low · Medium · High</strong>.</p>
+  </section>
+
+  <section class="stats">
+    <div class="stat-card"><div class="stat-num" id="statTotal">–</div><div class="stat-label">Emails analysed</div></div>
+    <div class="stat-card safe"><div class="stat-num" id="statSafe">–</div><div class="stat-label">Safe</div></div>
+    <div class="stat-card low"><div class="stat-num" id="statLow">–</div><div class="stat-label">Low risk</div></div>
+    <div class="stat-card medium"><div class="stat-num" id="statMedium">–</div><div class="stat-label">Medium risk</div></div>
+    <div class="stat-card high"><div class="stat-num" id="statHigh">–</div><div class="stat-label">High risk / suspicious</div></div>
+  </section>
+
+  <section class="filters">
+    <label>Risk level
+      <select id="filterLevel">
+        <option value="all">All</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+        <option value="safe">Safe</option>
+      </select>
+    </label>
+    <label>Mailbox
+      <select id="filterAccount"><option value="">All</option></select>
+    </label>
+    <label class="grow">Search
+      <input type="text" id="filterSearch" placeholder="Subject, sender, domain…">
+    </label>
+    <button class="btn ghost" id="exportBtn">Export CSV</button>
+  </section>
+
+  <div class="table-card">
+    <table class="mtable">
+      <thead>
+        <tr>
+          <th>Verdict</th>
+          <th>Sent</th>
+          <th>From</th>
+          <th>Subject</th>
+          <th>SPF</th>
+          <th>DKIM</th>
+          <th>DMARC</th>
+          <th>Origin (IP · location)</th>
+          <th class="num">Score</th>
+        </tr>
+      </thead>
+      <tbody id="emailRows">
+        <tr><td colspan="9" class="empty">Loading…</td></tr>
+      </tbody>
+    </table>
+    <div class="pagination">
+      <button class="btn ghost" id="prevPage" disabled>← Previous</button>
+      <span id="pageInfo">Page 1</span>
+      <button class="btn ghost" id="nextPage" disabled>Next →</button>
+    </div>
+  </div>
+
+</main>
+
+<div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="drawer-head">
+    <h2>Forensic report</h2>
+    <button class="close" id="drawerClose">×</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</aside>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

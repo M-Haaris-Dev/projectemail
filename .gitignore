@@ -1,0 +1,19 @@
+# Bytecode / caches
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Runtime data
+mailmeta.db
+mailmeta.db-wal
+mailmeta.db-shm
+
+# Config with secrets
+mailmeta.json
+
+# Test artifacts
+test/__pycache__/
+
+# Temp
+*.log
